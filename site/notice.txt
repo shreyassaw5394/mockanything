@@ -1,0 +1,24 @@
+Mock Anything
+Copyright 2026 Shreyas Sawant and Mock Anything contributors
+
+Licensed under the Apache License, Version 2.0.
+
+Mock Anything is a free, non-commercial passion project by an independent developer.
+It is not affiliated with, endorsed by, or sponsored by any company whose API it
+simulates. Company and product names are trademarks of their respective owners and
+are used only to describe compatibility.
+
+The built-in packs in packs/ are written by hand from publicly documented API facts
+(endpoint paths, field names, error codes, status values and documented test values).
+They do not contain copies of any provider's documentation text. The following
+openly licensed API descriptions were used as references:
+
+  Stripe OpenAPI description        https://github.com/stripe/openapi                  MIT License, Copyright (c) Stripe, Inc.
+  Twilio OpenAPI description        https://github.com/twilio/twilio-oai               MIT License, Copyright (c) Twilio, Inc.
+  GitHub REST API description       https://github.com/github/rest-api-description     MIT License, Copyright (c) GitHub, Inc.
+  Resend OpenAPI description        https://github.com/resend/resend-openapi           MIT License, Copyright (c) Resend
+  Paystack OpenAPI description      https://github.com/PaystackOSS/openapi             MIT License, Copyright (c) Paystack
+
+API descriptions fetched at runtime (for example from the APIs.guru directory, which
+is published under CC0 1.0) are downloaded to the user's machine and are not
+redistributed by this project. They remain subject to their owners' terms.

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mock Anything: a working twin of any API</title>
+<meta name="description" content="Run a working, stateful twin of any API on your machine in one command. Webhooks, declines, chaos and an MCP server for agents. No keys, no sandbox sign-up, no bill.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://mockanything.dev/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mock Anything">
+<meta property="og:title" content="Mock Anything: a working twin of any API">
+<meta property="og:description" content="On your machine, in one command. No keys, no sandbox sign-up, no bill.">
+<meta property="og:url" content="https://mockanything.dev/">
+<meta property="og:image" content="https://mockanything.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="/fonts/JetBrainsMono-500.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/styles.css">
+<script src="/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav">
+  <a class="wordmark" href="/" aria-label="Mock Anything home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="12" width="28" height="28" rx="8"/><rect x="26" y="24" width="28" height="28" rx="8"/></svg>Mock Anything</a>
+  <nav class="links" aria-label="Sections">
+    <a href="#twin">Twin</a>
+    <a href="#any">Any API</a>
+    <a href="#packs">Packs</a>
+    <a href="#agents">Agents</a>
+    <a href="#chaos">Chaos</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <a class="pill" href="#start">Get started</a>
+</header>
+
+<main id="main">
+<section class="hero" aria-labelledby="hero-title">
+  <canvas class="sky" id="sky" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <p class="eyebrow">Mission: test anything, spend nothing</p>
+    <h1 id="hero-title">A working twin of any&nbsp;API.</h1>
+    <p class="sub">On your machine, in one command. Your app and your agents use it like the real thing. No keys, no sandbox sign-up, no bill.</p>
+    <div class="command" data-copy="npx mockanything stripe">
+      <code><span class="prompt">$</span> npx mockanything stripe</code>
+      <button class="copy" type="button" aria-label="Copy command">Copy</button>
+    </div>
+    <dl class="telemetry" aria-label="Launch status">
+      <div><dt>Launch</dt><dd id="countdown" data-launch="2026-11-02T00:00:00">Sun 1 Nov · midnight</dd></div>
+      <div><dt>APIs by name</dt><dd>2,500+</dd></div>
+      <div><dt>Built-in packs</dt><dd>5</dd></div>
+      <div><dt>Keys needed</dt><dd>0</dd></div>
+    </dl>
+  </div>
+  <a class="scroll-cue" href="#problem" aria-label="Scroll to the story"><span></span></a>
+</section>
+
+<section id="problem" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">01</span> The problem</p>
+    <h2>Agents write code that moves money.<br><em>Then they test it.</em></h2>
+    <p class="sub">Payments, SMS, email, auth. Every integration an agent writes needs something to talk to, and every option today costs you something.</p>
+  </div>
+  <div class="cards three">
+    <article class="card bad">
+      <span class="k">Real keys</span>
+      <h3>Real consequences.</h3>
+      <p>The agent can charge cards, text real people, burn credits and hit rate limits. One loop away from a bill.</p>
+    </article>
+    <article class="card bad">
+      <span class="k">Sandboxes</span>
+      <h3>Accounts everywhere.</h3>
+      <p>Sign-up and keys per provider, each set up differently. Many regional providers barely offer one.</p>
+    </article>
+    <article class="card bad">
+      <span class="k">Hand-written mocks</span>
+      <h3>Lies that pass.</h3>
+      <p>Canned JSON that breaks the moment the code does something new, or passes against an API that behaves nothing like the real one.</p>
+    </article>
+  </div>
+</section>
+
+<section id="twin" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">02</span> The twin</p>
+    <h2>Not a mock.<br><em>A twin.</em></h2>
+    <p class="sub">A small working backend that acts like the provider: it remembers, it follows the rules, it sends the webhooks. Watch an agent build a checkout against one.</p>
+  </div>
+
+  <div class="mission" id="demo" aria-label="Example run: an agent builds a checkout against a Stripe twin">
+    <div class="mission-head">
+      <span class="live"><i></i>Live</span>
+      <span>Stripe twin · localhost:4010</span>
+      <span class="clock" id="tclock">T+00:00</span>
+    </div>
+    <div class="mission-body">
+      <div class="pane term">
+        <div class="bar"><span>Agent</span></div>
+        <ol class="lines">
+          <li data-t="0"><span class="dim">›</span> Build a checkout and test it against Stripe</li>
+          <li data-t="1"><span class="ok">●</span> twin_start <span class="dim">stripe → localhost:4010</span></li>
+          <li data-t="2"><span class="ok">●</span> Writing checkout.ts</li>
+          <li data-t="3"><span class="ok">●</span> Customer created</li>
+          <li data-t="4"><span class="ok">●</span> Payment confirmed: <b>succeeded</b></li>
+          <li data-t="5"><span class="ok">●</span> Webhook signature verified</li>
+          <li data-t="6"><span class="warn">●</span> twin_chaos <span class="dim">on</span></li>
+          <li data-t="7"><span class="warn">●</span> 503 from twin → retried with backoff</li>
+          <li data-t="8"><span class="warn">●</span> Declined card → shows “Card declined”</li>
+          <li data-t="9"><span class="ok">●</span> All checks pass. Shipping.</li>
+        </ol>
+      </div>
+      <div class="pane dash">
+        <div class="bar"><span>Twin traffic</span></div>
+        <ol class="reqs">
+          <li data-t="3"><b>POST</b><span>/v1/customers</span><em class="s2">200</em></li>
+          <li data-t="4"><b>POST</b><span>/v1/payment_intents</span><em class="s2">200</em></li>
+          <li data-t="5"><b>HOOK</b><span>payment_intent.succeeded <i class="tag ok-tag">signed</i></span><em class="s2">200</em></li>
+          <li data-t="7"><b>POST</b><span>/v1/payment_intents <i class="tag">chaos</i></span><em class="s5">503</em></li>
+          <li data-t="7"><b>POST</b><span>/v1/payment_intents</span><em class="s2">200</em></li>
+          <li data-t="8"><b>POST</b><span>…/confirm <i class="tag">card_declined</i></span><em class="s4">402</em></li>
+        </ol>
+        <dl class="counters">
+          <div><dt>Requests</dt><dd id="c-req">0</dd></div>
+          <div><dt>Webhooks</dt><dd id="c-hook">0</dd></div>
+          <div><dt>Spent</dt><dd class="zero">$0.00</dd></div>
+        </dl>
+      </div>
+    </div>
+    <p class="finale" data-t="9">None of it was real. <em>No keys. $0.</em></p>
+  </div>
+
+  <div class="cards three">
+    <article class="card">
+      <span class="k">Remembers</span>
+      <h3>Create it, then get it back.</h3>
+      <p>Customers, payments, messages and issues persist. Refunds change what's left to refund. Deleted things are gone.</p>
+    </article>
+    <article class="card">
+      <span class="k">Behaves</span>
+      <h3>Real shapes, real lifecycles.</h3>
+      <p>Provider-style IDs, pagination and errors. Flows like <code>queued → sent → delivered</code>. Webhooks signed the way the provider signs them, so your verification code runs unchanged.</p>
+    </article>
+    <article class="card">
+      <span class="k">Breaks on purpose</span>
+      <h3>Failure, on demand.</h3>
+      <p>Declined cards, 3-D Secure, bounced email, unreachable phones. Force any of them from the dashboard or your agent.</p>
+    </article>
+  </div>
+</section>
+
+<section id="any" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">03</span> Any API</p>
+    <h2>Name it. Point at it.<br><em>Or let your agent read the docs.</em></h2>
+    <p class="sub">Mock Anything reads an API's description and builds the twin itself: resources, IDs, state changes, pagination, errors and webhooks. Paths the spec misses still work.</p>
+  </div>
+  <ol class="paths">
+    <li><span class="k">Built-in pack</span><code>npx mockanything paystack</code><p>Hand-tuned, with documented test values.</p></li>
+    <li><span class="k">Any API by name</span><code>npx mockanything slack</code><p>2,500+ APIs from the public APIs.guru directory.</p></li>
+    <li><span class="k">Your spec</span><code>npx mockanything api.yaml</code><p>OpenAPI 3 or Swagger 2, file or URL. Inspect and override every guess.</p></li>
+    <li><span class="k">Just the docs</span><code>twin_from_docs(url)</code><p>Your agent reads the page and writes the twin, checked before it runs.</p></li>
+  </ol>
+  <div class="proof">
+    <div><b>20/20</b><span>official SDK steps pass on twins built straight from the public Stripe, Twilio, GitHub and Resend specs, no hand-tuning</span></div>
+    <div><b>&lt;0.3s</b><span>to turn GitHub's 1,254-operation spec into a working twin</span></div>
+  </div>
+</section>
+
+<section id="packs" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">04</span> Packs</p>
+    <h2>Ready on day one.</h2>
+    <p class="sub">Each pack covers the flow people actually build, checked against the provider's official SDK.</p>
+  </div>
+  <div class="packs">
+    <article class="pack"><b>Stripe</b><p>Customers, PaymentIntents, manual capture, refunds, Checkout Sessions, webhook endpoints, events.</p><code>pm_card_chargeDeclined</code></article>
+    <article class="pack"><b>Paystack</b><p>Initialize, local test checkout, verify, charge saved cards, customers, refunds.</p><code>charge.success</code></article>
+    <article class="pack"><b>Twilio</b><p>Send SMS with status callbacks from queued to delivered; fetch, list, delete.</p><code>+15005550001</code></article>
+    <article class="pack"><b>Resend</b><p>Send, schedule and cancel email; delivered, bounced and complained events.</p><code>bounced@resend.dev</code></article>
+    <article class="pack"><b>GitHub</b><p>Issues, comments and pull requests per repository, with signed webhooks.</p><code>issues.opened</code></article>
+    <article class="pack more"><b>Next</b><p>Regional payment, messaging and identity providers. Packs are plain YAML, and contributions are welcome.</p></article>
+  </div>
+</section>
+
+<section id="agents" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">05</span> Agents</p>
+    <h2>Your agent launches the twin.<br><em>No keys required.</em></h2>
+    <p class="sub">Mock Anything ships as an MCP server. Claude Code, Cursor and other agents start a twin mid-task, force a decline, turn on chaos and read back exactly what happened.</p>
+  </div>
+  <div class="tabs" data-tabs>
+    <div class="tablist" role="tablist" aria-label="Install">
+      <button role="tab" aria-selected="true" aria-controls="tab-claude" id="t-claude" type="button">Claude Code</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-cursor" id="t-cursor" type="button" tabindex="-1">Cursor and others</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-cli" id="t-cli" type="button" tabindex="-1">Command line</button>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-claude" aria-labelledby="t-claude">
+      <div class="command" data-copy="claude mcp add mockanything -- npx -y mockanything mcp"><code><span class="prompt">$</span> claude mcp add mockanything -- npx -y mockanything mcp</code><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-cursor" aria-labelledby="t-cursor" hidden>
+      <pre class="block"><code>{ "mcpServers": { "mockanything": { "command": "npx", "args": ["-y", "mockanything", "mcp"] } } }</code></pre>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-cli" aria-labelledby="t-cli" hidden>
+      <pre class="block"><code>mockanything &lt;api&gt;            start a twin
+mockanything inspect &lt;api&gt;    see and edit what was inferred
+mockanything env &lt;api&gt;        snippets for your SDK
+mockanything list             built-in packs</code></pre>
+    </div>
+  </div>
+  <p class="quote">“Start a Stripe twin, build the checkout, then force a declined card and make sure we handle it.”</p>
+  <ul class="chips" aria-label="MCP tools">
+    <li>twin_start</li><li>twin_from_docs</li><li>twin_events</li><li>twin_state</li><li>twin_scenario</li><li>twin_chaos</li><li>twin_webhook_add</li><li>twin_advance_clock</li><li>twin_reset</li>
+  </ul>
+</section>
+
+<section id="chaos" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">06</span> Chaos</p>
+    <h2>Find the failure<br><em>before your users do.</em></h2>
+    <p class="sub">Turn on chaos and the twin misbehaves like a real provider on a bad day. Seeded, so the failure your agent found can be replayed exactly.</p>
+  </div>
+  <ul class="modes" aria-label="Chaos modes">
+    <li><b>timeout</b><span>Requests hang until your client gives up.</span></li>
+    <li><b>5xx</b><span>500, 502 and 503 in the provider's error shape.</span></li>
+    <li><b>429</b><span>Rate limits with Retry-After.</span></li>
+    <li><b>slow</b><span>Responses take one to four seconds.</span></li>
+    <li><b>dup-webhooks</b><span>The same event, delivered twice.</span></li>
+    <li><b>out-of-order</b><span>Events arrive shuffled.</span></li>
+  </ul>
+  <div class="command center" data-copy="npx mockanything stripe --chaos --seed 42"><code><span class="prompt">$</span> npx mockanything stripe --chaos --seed 42</code><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+</section>
+
+<section id="safe" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">07</span> Safe by default</p>
+    <h2>Nothing real leaves your machine.</h2>
+  </div>
+  <ul class="facts-list">
+    <li><b>Local only</b>Listens on localhost. Webhooks go to localhost unless you allow a host.</li>
+    <li><b>No live keys</b>Live keys are refused. Any placeholder works.</li>
+    <li><b>No real cards</b>Real-looking card numbers are refused. Use documented test values.</li>
+    <li><b>Plain test pages</b>Checkout and 3-D Secure pages are unbranded and say they aren't real.</li>
+    <li><b>No telemetry</b>Mock Anything doesn't phone home.</li>
+  </ul>
+  <p class="honest">A twin is only as good as its facts. Packs cover each API's main flow, not every endpoint, and inferred twins make guesses you can see and override. Build fast against a twin; run final checks against the provider's sandbox. A fidelity report comparing a twin with the real sandbox is on the way.</p>
+</section>
+
+<section id="faq" class="act">
+  <div class="inner">
+    <p class="eyebrow"><span class="num">08</span> Questions</p>
+    <h2>FAQ</h2>
+  </div>
+  <div class="faq">
+    <details><summary>Is Mock Anything affiliated with Stripe, Twilio or the other providers?</summary><p>No. Mock Anything is an independent, free, non-commercial project. Provider names are used only to say which API a twin is compatible with. Twins are built from public API facts, not from any provider's code or documentation text.</p></details>
+    <details><summary>Do I need an account or API key?</summary><p>No. Any placeholder key works, for example <code>sk_test_mockanything</code>. Live keys are refused.</p></details>
+    <details><summary>Does anything I send leave my machine?</summary><p>No. The twin runs locally and answers from memory. The only outbound traffic is the webhooks you point at your own app, and fetching an API description when you ask for one by name or URL.</p></details>
+    <details><summary>Which APIs work?</summary><p>Anything with an OpenAPI or Swagger description, more than 2,500 APIs by name from the public APIs.guru directory, the built-in packs, and APIs your agent describes from their documentation.</p></details>
+    <details><summary>Can I use it in CI?</summary><p>Yes. Start a twin before your tests and point your SDK's base URL at it. Use <code>--seed</code> to make chaos runs repeatable.</p></details>
+    <details><summary>How do I add a provider?</summary><p>Packs are plain YAML. The contributing guide in the repository explains the rules: facts only, no branding, and a test with the official SDK.</p></details>
+  </div>
+</section>
+
+<section id="start" class="final">
+  <canvas class="sky small" id="sky2" aria-hidden="true"></canvas>
+  <div class="inner">
+    <p class="eyebrow">Launching Sunday, 1 November · midnight</p>
+    <h2>Stop testing on real money.</h2>
+    <div class="command" data-copy="npx mockanything stripe"><code><span class="prompt">$</span> npx mockanything stripe</code><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+    <p class="launch">Open source under Apache-2.0. The package and source go live at launch.</p>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="inner wide">
+    <div class="foot-row">
+      <span class="wordmark">Mock Anything</span>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/license.txt">Licence</a>
+        <a href="/notice.txt">Notices</a>
+      </nav>
+    </div>
+    <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub and other names are trademarks of their respective owners, used only to describe compatibility.</p>
+  </div>
+</footer>
+</body>
+</html>

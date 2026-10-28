@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Privacy · Mock Anything</title>
+<meta name="description" content="How the Mock Anything website and tool handle data: no cookies, no analytics, no telemetry.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://mockanything.dev/privacy">
+<link rel="stylesheet" href="/styles.css">
+<script src="/site.js" defer></script>
+</head>
+<body>
+<header class="nav">
+  <a class="wordmark" href="/">Mock Anything</a>
+  <a class="pill" href="/#start">Get started</a>
+</header>
+<main class="doc">
+  <h1>Privacy</h1>
+  <p class="updated">Last updated 28 October 2026</p>
+
+  <p>Mock Anything is a free, non-commercial passion project run by Shreyas Sawant, an independent developer. This page covers the website at mockanything.dev and the Mock Anything tool (the command-line program and MCP server). Contact: <a href="mailto:shreyassaw@gmail.com">shreyassaw@gmail.com</a>.</p>
+
+  <h2>The short version</h2>
+  <ul>
+    <li>The website sets no cookies, uses no analytics or tracking, and loads nothing from other websites.</li>
+    <li>The tool runs on your computer, has no telemetry, and does not send what you do to us.</li>
+    <li>We don't sell or share personal information, and we don't have accounts, forms or mailing lists.</li>
+  </ul>
+
+  <h2>The website</h2>
+  <p>The site is static and hosted by Vercel Inc. (United States). To deliver and protect the site, Vercel processes standard request data for every visit: IP address, browser user agent, the page requested and the time. Vercel keeps this data for a short period under its own <a href="https://vercel.com/legal/privacy-policy">privacy policy</a>. We do not use it to identify or profile visitors.</p>
+  <table>
+    <thead><tr><th>Category</th><th>What</th><th>Why</th><th>Kept</th></tr></thead>
+    <tbody>
+      <tr><td>Server logs</td><td>IP address, user agent, page, time</td><td>Delivering and securing the site (legitimate interest)</td><td>Short-term, by Vercel</td></tr>
+      <tr><td>Cookies and local storage</td><td>None</td><td>–</td><td>–</td></tr>
+      <tr><td>Analytics, pixels, session replay</td><td>None</td><td>–</td><td>–</td></tr>
+    </tbody>
+  </table>
+  <p>Links to other sites (for example GitHub or npm) are governed by those sites' own policies once you follow them.</p>
+
+  <h2>The tool</h2>
+  <p>Mock Anything runs locally. Twins keep their data in memory on your computer and forget it when they stop. Nothing you send to a twin is sent to us. The tool makes network requests only in these cases:</p>
+  <ul>
+    <li><b>Installing or updating</b> it through npm (governed by npm's terms and privacy policy).</li>
+    <li><b>Looking up an API by name:</b> it downloads the public directory from api.apis.guru and then the API description from the address listed there. Those servers see your IP address. Downloads are cached in <code>~/.mockanything/cache</code>.</li>
+    <li><b>Loading a URL you give it</b> (an API description, or a documentation page when your agent uses <code>twin_from_docs</code>). That server sees your IP address.</li>
+    <li><b>Webhooks</b> you configure, which go to addresses on your own machine unless you allow other hosts.</li>
+  </ul>
+  <p>The tool masks keys and card numbers in its local logs and dashboard. Please use test data only.</p>
+
+  <h2>International transfers</h2>
+  <p>Vercel may process website request data in the United States and other countries, under its standard contractual protections (including the EU–US Data Privacy Framework and Standard Contractual Clauses where applicable).</p>
+
+  <h2>Your rights</h2>
+  <p>Depending on where you live (for example under the GDPR, UK GDPR or California law), you may have rights to access, correct, delete or object to the use of your personal information. We hold no personal information about visitors ourselves; for website request logs we will help you contact Vercel. Write to <a href="mailto:shreyassaw@gmail.com">shreyassaw@gmail.com</a> and we will respond within 30 days (45 days under California law). You may also complain to your local data-protection authority.</p>
+
+  <h2>California</h2>
+  <p>We do not sell or share personal information, and we do not use it for targeted advertising.</p>
+
+  <h2>Children</h2>
+  <p>Mock Anything is a developer tool and is not directed at children under 16.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, we will update this page and the date at the top. Significant changes will be noted on the home page.</p>
+</main>
+<footer class="footer">
+  <div class="inner wide">
+    <div class="foot-row">
+      <span class="wordmark">Mock Anything</span>
+      <nav class="foot-links" aria-label="Footer"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/license.txt">Licence</a><a href="/notice.txt">Notices</a></nav>
+    </div>
+    <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub and other names are trademarks of their respective owners, used only to describe compatibility.</p>
+  </div>
+</footer>
+</body>
+</html>

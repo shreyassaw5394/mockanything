@@ -7,7 +7,7 @@ npx mockanything stripe
 # → Stripe twin running at http://localhost:4010/v1
 ```
 
-Point your app or agent at that URL instead of the real one and everything behaves like the real API: create a customer, charge a test card, get the signed webhook, refund it. None of it is real, and nothing leaves your machine.
+Point your app or agent at that URL instead of the real one and it behaves like the real API for the flows it covers: create a customer, charge a test card, get the signed webhook, refund it. None of it is real, and nothing leaves your machine.
 
 Mock Anything works with **any** API, not just a fixed list:
 
