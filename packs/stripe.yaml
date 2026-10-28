@@ -1,0 +1,369 @@
+# Twin of the Stripe API (payments flow). Facts only: endpoint paths, field names, error codes and the
+# test values Stripe documents. Reference: Stripe's OpenAPI description (github.com/stripe/openapi, MIT).
+# Not affiliated with or endorsed by Stripe. Stripe is a trademark of Stripe, Inc.
+schema: 1
+id: stripe
+title: Stripe
+description: Customers, PaymentIntents (confirm, capture, cancel, declines, card authentication), refunds, Checkout Sessions, webhook endpoints and events.
+source: { kind: pack, url: "https://github.com/stripe/openapi", license: MIT, notes: "Hand-written from public API facts." }
+basePath: /v1
+auth: { type: bearer, livePattern: "^(sk|rk)_live_" }
+testCards: []
+notes:
+  - "Point the official SDK at the twin: new Stripe('sk_test_anything', { host: 'localhost', port: <port>, protocol: 'http' })."
+  - "Test payment methods: pm_card_visa (succeeds), pm_card_chargeDeclined, pm_card_chargeDeclinedInsufficientFunds, pm_card_chargeDeclinedExpiredCard, pm_card_chargeDeclinedIncorrectCvc, pm_card_chargeDeclinedProcessingError, pm_card_threeDSecure2Required (needs the test page)."
+  - "Webhooks are signed with the secret shown at start (or the one returned by POST /v1/webhook_endpoints); stripe.webhooks.constructEvent works unchanged."
+snippets:
+  node: |
+    import Stripe from "stripe";
+    const stripe = new Stripe("sk_test_mockanything", { host: "{{host}}", port: {{port}}, protocol: "http" });
+    // webhook secret: {{secret}}
+  python: |
+    import stripe
+    stripe.api_key = "sk_test_mockanything"
+    stripe.api_base = "{{baseUrl}}"
+  env: |
+    STRIPE_SECRET_KEY=sk_test_mockanything
+    STRIPE_API_BASE={{baseUrl}}
+    STRIPE_WEBHOOK_SECRET={{secret}}
+conventions:
+  timestamps: unix
+  idempotencyHeader: Idempotency-Key
+  expandParam: expand
+  ignore: [expand, confirm, amount_to_capture]
+  list: { object: list, data: "{{$items}}", has_more: "{{$hasMore}}", url: "{{$url}}" }
+  listStyle: { kind: cursor, limitParam: limit, defaultLimit: 10, maxLimit: 100, afterParam: starting_after, beforeParam: ending_before, order: desc }
+  error: { error: { message: "{{$message}}", type: "{{$type}}", code: "{{$code}}", param: "{{$param}}", doc_url: "{{$docUrl}}" } }
+  deleteBody: { id: "{{obj.id}}", object: "{{obj.object}}", deleted: true }
+  errors:
+    notFound: { status: 404, message: "No such {{$resource}}: '{{$id}}'", code: resource_missing, type: invalid_request_error, param: id }
+    unauthorized: { status: 401, message: "You did not provide an API key. Any test key works with this twin, e.g. sk_test_mockanything.", type: invalid_request_error }
+    liveKey: { status: 401, message: "This twin refuses live keys. Use a test key such as sk_test_mockanything.", type: invalid_request_error, code: api_key_live_refused }
+    missingParam: { status: 400, message: "Missing required param: {{$param}}.", code: parameter_missing, type: invalid_request_error, param: "{{$param}}" }
+    invalidState: { status: 400, message: "You cannot {{$transition}} this {{$resource}} because it has a status of {{$state}}.", code: "{{$resourceKey}}_unexpected_state", type: invalid_request_error }
+    rateLimited: { status: 429, message: "Too many requests hit the API too quickly. We recommend an exponential backoff of your requests.", code: rate_limit, type: invalid_request_error }
+    serverError: { status: 500, message: "An unknown error occurred.", type: api_error }
+    realCard: { status: 400, message: "This looks like a real card number. Use Stripe's documented test values (for example pm_card_visa); never send real card details to a test server.", type: invalid_request_error, code: real_card_refused }
+
+resources:
+  customers:
+    singular: customer
+    id: { style: prefixed, prefix: cus_, length: 14 }
+    readonly: [object, created, livemode]
+    types: { balance: integer }
+    filters: { email: email }
+    defaults:
+      object: customer
+      address: null
+      balance: 0
+      created: "{{now}}"
+      currency: null
+      default_source: null
+      delinquent: false
+      description: null
+      discount: null
+      email: null
+      invoice_prefix: "{{upper(hex(8))}}"
+      invoice_settings: { custom_fields: null, default_payment_method: null, footer: null, rendering_options: null }
+      livemode: false
+      metadata: {}
+      name: null
+      phone: null
+      preferred_locales: []
+      shipping: null
+      tax_exempt: none
+      test_clock: null
+
+  payment_intents:
+    singular: PaymentIntent
+    id: { style: prefixed, prefix: pi_, length: 24 }
+    required: [amount, currency]
+    readonly: [object, created, livemode, client_secret, amount_received, amount_capturable, latest_charge, next_action, last_payment_error, canceled_at]
+    types: { amount: integer, application_fee_amount: integer }
+    refs: { customer: customers }
+    filters: { customer: customer }
+    hidden: [__refunded]
+    defaults:
+      object: payment_intent
+      amount_capturable: 0
+      amount_details: { tip: {} }
+      amount_received: 0
+      application: null
+      application_fee_amount: null
+      automatic_payment_methods: null
+      canceled_at: null
+      cancellation_reason: null
+      capture_method: automatic_async
+      client_secret: "{{obj.id}}_secret_{{newId('', 25)}}"
+      confirmation_method: automatic
+      created: "{{now}}"
+      customer: null
+      description: null
+      last_payment_error: null
+      latest_charge: null
+      livemode: false
+      metadata: {}
+      next_action: null
+      on_behalf_of: null
+      payment_method: null
+      payment_method_options: {}
+      payment_method_types: [card]
+      receipt_email: null
+      return_url: null
+      setup_future_usage: null
+      shipping: null
+      statement_descriptor: null
+      transfer_data: null
+    lifecycle:
+      field: status
+      initial: requires_payment_method
+      initialWhen:
+        - when: { path: body.payment_method, exists: true }
+          value: requires_confirmation
+      transitions:
+        confirm:
+          from: [requires_payment_method, requires_confirmation, requires_action]
+          require:
+            - when: { path: obj.payment_method, exists: true }
+              error: { status: 400, message: "You cannot confirm this PaymentIntent because it's missing a payment method. Update it with a payment method, then confirm it again.", code: payment_intent_unexpected_state, type: invalid_request_error }
+          scenarios: card
+          to: succeeded
+          set: { amount_received: "{{obj.amount}}", latest_charge: "{{newId('ch_')}}", next_action: null, last_payment_error: null }
+          emit: [payment_intent.succeeded]
+          cases:
+            - when: { path: obj.capture_method, equals: manual }
+              to: requires_capture
+              set: { amount_capturable: "{{obj.amount}}", latest_charge: "{{newId('ch_')}}", next_action: null, last_payment_error: null }
+              emit: [payment_intent.amount_capturable_updated]
+        capture:
+          from: [requires_capture]
+          to: succeeded
+          set: { amount_received: "{{int(body.amount_to_capture ?? obj.amount)}}", amount_capturable: 0 }
+          emit: [payment_intent.succeeded]
+        cancel:
+          from: [requires_payment_method, requires_capture, requires_confirmation, requires_action, processing]
+          to: canceled
+          set: { canceled_at: "{{now}}", cancellation_reason: "{{body.cancellation_reason ?? null}}", amount_capturable: 0, next_action: null }
+          emit: [payment_intent.canceled]
+        complete_action:
+          from: [requires_action]
+          to: succeeded
+          set: { amount_received: "{{obj.amount}}", latest_charge: "{{newId('ch_')}}", next_action: null }
+          emit: [payment_intent.succeeded]
+          cases:
+            - when: { path: obj.capture_method, equals: manual }
+              to: requires_capture
+              set: { amount_capturable: "{{obj.amount}}", latest_charge: "{{newId('ch_')}}", next_action: null }
+              emit: [payment_intent.amount_capturable_updated]
+        fail_action:
+          from: [requires_action]
+          to: requires_payment_method
+          set:
+            next_action: null
+            last_payment_error: { code: payment_intent_authentication_failure, message: "The provided payment method has failed authentication.", type: card_error }
+          emit: [payment_intent.payment_failed]
+
+  refunds:
+    singular: refund
+    id: { style: prefixed, prefix: re_, length: 24 }
+    readonly: [object, created, livemode, status, charge, currency, balance_transaction]
+    types: { amount: integer }
+    refs: { payment_intent: payment_intents }
+    filters: { payment_intent: payment_intent }
+    defaults:
+      object: refund
+      amount: "{{body.amount ?? sub(target.amount_received, target.__refunded ?? 0)}}"
+      balance_transaction: null
+      charge: "{{target.latest_charge}}"
+      created: "{{now}}"
+      currency: "{{target.currency}}"
+      metadata: {}
+      payment_intent: "{{body.payment_intent}}"
+      reason: "{{body.reason ?? null}}"
+      receipt_number: null
+      status: succeeded
+
+  checkout_sessions:
+    singular: checkout.session
+    id: { style: prefixed, prefix: cs_test_, length: 58 }
+    readonly: [object, created, livemode, url, payment_status, amount_total]
+    hidden: [line_items]
+    defaults:
+      object: checkout.session
+      amount_subtotal: "{{mul(body.line_items[0].price_data.unit_amount ?? 0, body.line_items[0].quantity ?? 1)}}"
+      amount_total: "{{mul(body.line_items[0].price_data.unit_amount ?? 0, body.line_items[0].quantity ?? 1)}}"
+      cancel_url: null
+      client_reference_id: null
+      created: "{{now}}"
+      currency: "{{body.line_items[0].price_data.currency ?? body.currency ?? 'usd'}}"
+      customer: null
+      customer_email: null
+      expires_at: "{{add(now, 86400)}}"
+      livemode: false
+      metadata: {}
+      mode: payment
+      payment_intent: null
+      payment_status: unpaid
+      success_url: null
+      url: "{{checkoutUrl()}}"
+    lifecycle:
+      field: status
+      initial: open
+      transitions:
+        complete:
+          from: [open]
+          to: complete
+          set: { payment_status: paid, payment_intent: "{{newId('pi_')}}" }
+          emit: [checkout.session.completed]
+        expire:
+          from: [open]
+          to: expired
+          set: { url: null }
+          emit: [checkout.session.expired]
+
+  webhook_endpoints:
+    singular: webhook_endpoint
+    id: { style: prefixed, prefix: we_, length: 24 }
+    required: [url, enabled_events]
+    types: { enabled_events: array }
+    defaults:
+      object: webhook_endpoint
+      api_version: null
+      application: null
+      created: "{{now}}"
+      description: null
+      livemode: false
+      metadata: {}
+      status: enabled
+
+  events:
+    singular: event
+    id: { style: prefixed, prefix: evt_, length: 24 }
+    filters: { type: type }
+
+webhooks:
+  signing: { scheme: stripe, header: Stripe-Signature, secretPrefix: whsec_ }
+  eventId: { style: prefixed, prefix: evt_, length: 24 }
+  storeAs: events
+  retries: 2
+  registration: { resource: webhook_endpoints, urlField: url, eventsField: enabled_events, secretField: secret }
+  envelope:
+    id: "{{$eventId}}"
+    object: event
+    api_version: "2024-06-20"
+    created: "{{$created}}"
+    data: { object: "{{$object}}" }
+    livemode: false
+    pending_webhooks: 1
+    request: { id: null, idempotency_key: null }
+    type: "{{$type}}"
+
+checkout:
+  - { resource: payment_intents, succeed: complete_action, fail: fail_action, returnUrlField: return_url, title: "Card authentication (test)", amountField: amount, currencyField: currency, amountMinorUnits: true }
+  - { resource: checkout_sessions, succeed: complete, fail: expire, returnUrlField: success_url, title: "Checkout (test)", amountField: amount_total, currencyField: currency, amountMinorUnits: true }
+
+scenarios:
+  card_declined:
+    description: "The card is declined (generic_decline)."
+    on: card
+    when: { path: obj.payment_method, in: [pm_card_chargeDeclined, pm_card_visa_chargeDeclined, tok_chargeDeclined] }
+    to: requires_payment_method
+    set: { last_payment_error: { code: card_declined, decline_code: generic_decline, message: "Your card was declined.", type: card_error } }
+    emit: [payment_intent.payment_failed]
+    error: { status: 402, message: "Your card was declined.", code: card_declined, type: card_error, extra: { decline_code: generic_decline } }
+  insufficient_funds:
+    description: "The card has insufficient funds."
+    on: card
+    when: { path: obj.payment_method, in: [pm_card_chargeDeclinedInsufficientFunds, pm_card_visa_chargeDeclinedInsufficientFunds, tok_chargeDeclinedInsufficientFunds] }
+    to: requires_payment_method
+    set: { last_payment_error: { code: card_declined, decline_code: insufficient_funds, message: "Your card has insufficient funds.", type: card_error } }
+    emit: [payment_intent.payment_failed]
+    error: { status: 402, message: "Your card has insufficient funds.", code: card_declined, type: card_error, extra: { decline_code: insufficient_funds } }
+  expired_card:
+    description: "The card has expired."
+    on: card
+    when: { path: obj.payment_method, in: [pm_card_chargeDeclinedExpiredCard, tok_chargeDeclinedExpiredCard] }
+    to: requires_payment_method
+    set: { last_payment_error: { code: expired_card, message: "Your card has expired.", type: card_error } }
+    emit: [payment_intent.payment_failed]
+    error: { status: 402, message: "Your card has expired.", code: expired_card, type: card_error }
+  incorrect_cvc:
+    description: "The card's security code is wrong."
+    on: card
+    when: { path: obj.payment_method, in: [pm_card_chargeDeclinedIncorrectCvc, tok_chargeDeclinedIncorrectCvc] }
+    to: requires_payment_method
+    set: { last_payment_error: { code: incorrect_cvc, message: "Your card's security code is incorrect.", type: card_error } }
+    emit: [payment_intent.payment_failed]
+    error: { status: 402, message: "Your card's security code is incorrect.", code: incorrect_cvc, type: card_error }
+  processing_error:
+    description: "A processing error; retrying can succeed."
+    on: card
+    when: { path: obj.payment_method, in: [pm_card_chargeDeclinedProcessingError, tok_chargeDeclinedProcessingError] }
+    to: requires_payment_method
+    set: { last_payment_error: { code: processing_error, message: "An error occurred while processing your card. Try again in a little bit.", type: card_error } }
+    emit: [payment_intent.payment_failed]
+    error: { status: 402, message: "An error occurred while processing your card. Try again in a little bit.", code: processing_error, type: card_error }
+  requires_authentication:
+    description: "The card needs authentication (3-D Secure); the customer finishes it on the local test page."
+    on: card
+    when: { path: obj.payment_method, in: [pm_card_threeDSecure2Required, pm_card_authenticationRequired, pm_card_threeDSecureRequired] }
+    to: requires_action
+    set:
+      next_action: { type: redirect_to_url, redirect_to_url: { url: "{{checkoutUrl()}}", return_url: "{{obj.return_url ?? null}}" } }
+    emit: [payment_intent.requires_action]
+
+operations:
+  - { method: POST, path: /customers, action: create, resource: customers, emit: [customer.created] }
+  - { method: GET, path: /customers, action: list, resource: customers }
+  - { method: GET, path: "/customers/{customer}", action: read, resource: customers }
+  - { method: POST, path: "/customers/{customer}", action: update, resource: customers, emit: [customer.updated] }
+  - { method: DELETE, path: "/customers/{customer}", action: delete, resource: customers, emit: [customer.deleted] }
+
+  - method: POST
+    path: /payment_intents
+    action: create
+    resource: payment_intents
+    emit: [payment_intent.created]
+    then: [{ transition: confirm, when: { path: body.confirm, truthy: true } }]
+  - { method: GET, path: /payment_intents, action: list, resource: payment_intents }
+  - { method: GET, path: "/payment_intents/{intent}", action: read, resource: payment_intents }
+  - { method: POST, path: "/payment_intents/{intent}", action: update, resource: payment_intents }
+  - { method: POST, path: "/payment_intents/{intent}/confirm", action: transition, resource: payment_intents, transition: confirm }
+  - { method: POST, path: "/payment_intents/{intent}/capture", action: transition, resource: payment_intents, transition: capture }
+  - { method: POST, path: "/payment_intents/{intent}/cancel", action: transition, resource: payment_intents, transition: cancel }
+
+  - method: POST
+    path: /refunds
+    action: create
+    resource: refunds
+    require:
+      - when: { path: body.payment_intent, exists: true }
+        error: { status: 400, message: "Missing required param: payment_intent.", code: parameter_missing, type: invalid_request_error, param: payment_intent }
+    effects:
+      - resource: payment_intents
+        id: "{{body.payment_intent}}"
+        mustExist: { status: 400, message: "No such payment_intent: '{{$id}}'", code: resource_missing, type: invalid_request_error, param: payment_intent }
+        require:
+          - when: { path: target.status, equals: succeeded }
+            error: { status: 400, message: "This PaymentIntent does not have a successful charge to refund.", code: charge_not_refundable, type: invalid_request_error }
+          - when: { path: "{{body.amount ?? sub(target.amount_received, target.__refunded ?? 0)}}", lte: "sub(target.amount_received, target.__refunded ?? 0)" }
+            error: { status: 400, message: "Refund amount is greater than the amount remaining on this charge.", code: amount_too_large, type: invalid_request_error, param: amount }
+          - when: { path: "sub(target.amount_received, target.__refunded ?? 0)", gte: "1" }
+            error: { status: 400, message: "This charge has already been refunded.", code: charge_already_refunded, type: invalid_request_error }
+        inc: { __refunded: "{{obj.amount}}" }
+    emit: [refund.created, charge.refunded]
+  - { method: GET, path: /refunds, action: list, resource: refunds }
+  - { method: GET, path: "/refunds/{refund}", action: read, resource: refunds }
+
+  - { method: POST, path: /checkout/sessions, action: create, resource: checkout_sessions }
+  - { method: GET, path: /checkout/sessions, action: list, resource: checkout_sessions }
+  - { method: GET, path: "/checkout/sessions/{session}", action: read, resource: checkout_sessions }
+  - { method: POST, path: "/checkout/sessions/{session}/expire", action: transition, resource: checkout_sessions, transition: expire }
+
+  - { method: POST, path: /webhook_endpoints, action: create, resource: webhook_endpoints }
+  - { method: GET, path: /webhook_endpoints, action: list, resource: webhook_endpoints }
+  - { method: GET, path: "/webhook_endpoints/{webhook_endpoint}", action: read, resource: webhook_endpoints }
+  - { method: DELETE, path: "/webhook_endpoints/{webhook_endpoint}", action: delete, resource: webhook_endpoints }
+
+  - { method: GET, path: /events, action: list, resource: events }
+  - { method: GET, path: "/events/{id}", action: read, resource: events }

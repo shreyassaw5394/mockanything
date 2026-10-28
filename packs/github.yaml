@@ -1,0 +1,247 @@
+# Twin of the GitHub REST API (repositories, issues, comments, pull requests, webhooks). Facts only:
+# endpoint paths, field names and event names. Reference: GitHub's OpenAPI description
+# (github.com/github/rest-api-description, MIT). Not affiliated with or endorsed by GitHub.
+# GitHub is a trademark of GitHub, Inc.
+schema: 1
+id: github
+title: GitHub
+description: Repositories, issues (open, edit, close, reopen), comments, pull requests (open, merge) and signed webhooks.
+source: { kind: pack, url: "https://github.com/github/rest-api-description", license: MIT, notes: "Hand-written from public API facts." }
+auth: { type: bearer, optional: true, warnPattern: "^(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_)" }
+notes:
+  - "Use any placeholder token; the twin never needs a real one. Any owner/repo works and starts empty."
+  - "Point Octokit at the twin: new Octokit({ auth: 'placeholder', baseUrl: '<twin URL>' })."
+  - "Webhooks carry X-GitHub-Event and X-Hub-Signature-256 (sha256 HMAC with the secret shown at start)."
+snippets:
+  node: |
+    import { Octokit } from "@octokit/rest";
+    const octokit = new Octokit({ auth: "placeholder", baseUrl: "{{baseUrl}}" });
+    // webhook secret: {{secret}}
+  env: |
+    GITHUB_API_URL={{baseUrl}}
+    GITHUB_TOKEN=placeholder
+    GITHUB_WEBHOOK_SECRET={{secret}}
+conventions:
+  timestamps: iso
+  createStatus: 201
+  deleteStatus: 204
+  listStyle: { kind: page, limitParam: per_page, pageParam: page, pageBase: 1, defaultLimit: 30, maxLimit: 100, order: desc, linkHeader: true }
+  error: { message: "{{$message}}", documentation_url: "https://docs.github.com/rest", status: "{{$status}}" }
+  errors:
+    notFound: { status: 404, message: "Not Found" }
+    unauthorized: { status: 401, message: "Requires authentication" }
+    missingParam:
+      status: 422
+      message: "Validation Failed"
+      extra: { errors: [{ resource: "{{$resource}}", code: missing_field, field: "{{$param}}" }] }
+    invalidState: { status: 422, message: "Validation Failed" }
+    rateLimited: { status: 403, message: "API rate limit exceeded for user." }
+    serverError: { status: 500, message: "Server Error" }
+
+resources:
+  issues:
+    singular: issue
+    id: { style: int }
+    scope: [owner, repo]
+    required: [title]
+    readonly: [number, node_id, url, html_url, user, comments, created_at, closed_at, author_association, repository_url]
+    filters: { state: { field: state, default: open, all: all } }
+    defaults:
+      node_id: "{{concat('I_kw', newId('', 16))}}"
+      number: "{{seq('issue')}}"
+      url: "{{twin.baseUrl}}/repos/{{params.owner}}/{{params.repo}}/issues/{{obj.number}}"
+      repository_url: "{{twin.baseUrl}}/repos/{{params.owner}}/{{params.repo}}"
+      html_url: "{{twin.baseUrl}}/{{params.owner}}/{{params.repo}}/issues/{{obj.number}}"
+      title: "{{body.title}}"
+      body: null
+      user: { login: mockanything-bot, id: 1, type: User, site_admin: false }
+      labels: []
+      assignee: null
+      assignees: []
+      milestone: null
+      locked: false
+      active_lock_reason: null
+      comments: 0
+      pull_request: null
+      closed_at: null
+      created_at: "{{nowIso}}"
+      updated_at: "{{nowIso}}"
+      closed_by: null
+      author_association: OWNER
+      state_reason: null
+    onUpdate: { updated_at: "{{nowIso}}" }
+    lifecycle:
+      field: state
+      initial: open
+      transitions:
+        close:
+          from: [open]
+          to: closed
+          set: { closed_at: "{{nowIso}}", state_reason: "{{body.state_reason ?? 'completed'}}", closed_by: { login: mockanything-bot, id: 1, type: User } }
+          emit: [{ type: issues.closed, payload: { action: closed, issue: "{{$object}}", repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+        reopen:
+          from: [closed]
+          to: open
+          set: { closed_at: null, state_reason: reopened, closed_by: null }
+          emit: [{ type: issues.reopened, payload: { action: reopened, issue: "{{$object}}", repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+
+  comments:
+    singular: comment
+    id: { style: int }
+    scope: [owner, repo, issue_number]
+    required: [body]
+    readonly: [node_id, url, html_url, user, created_at, issue_url, author_association]
+    defaults:
+      node_id: "{{concat('IC_kw', newId('', 16))}}"
+      url: "{{twin.baseUrl}}/repos/{{params.owner}}/{{params.repo}}/issues/comments/{{obj.id}}"
+      html_url: "{{twin.baseUrl}}/{{params.owner}}/{{params.repo}}/issues/{{params.issue_number}}#issuecomment-{{obj.id}}"
+      issue_url: "{{twin.baseUrl}}/repos/{{params.owner}}/{{params.repo}}/issues/{{params.issue_number}}"
+      user: { login: mockanything-bot, id: 1, type: User, site_admin: false }
+      created_at: "{{nowIso}}"
+      updated_at: "{{nowIso}}"
+      author_association: OWNER
+    onUpdate: { updated_at: "{{nowIso}}" }
+
+  pulls:
+    singular: pull request
+    id: { style: int }
+    scope: [owner, repo]
+    required: [title, head, base]
+    readonly: [number, node_id, url, html_url, user, merged, merged_at, merge_commit_sha, created_at, closed_at, author_association]
+    filters: { state: { field: state, default: open, all: all } }
+    defaults:
+      node_id: "{{concat('PR_kw', newId('', 16))}}"
+      number: "{{seq('issue')}}"
+      url: "{{twin.baseUrl}}/repos/{{params.owner}}/{{params.repo}}/pulls/{{obj.number}}"
+      html_url: "{{twin.baseUrl}}/{{params.owner}}/{{params.repo}}/pull/{{obj.number}}"
+      title: "{{body.title}}"
+      body: null
+      user: { login: mockanything-bot, id: 1, type: User, site_admin: false }
+      head: { ref: "{{body.head}}", label: "{{params.owner}}:{{body.head}}", sha: "{{hex(40)}}" }
+      base: { ref: "{{body.base}}", label: "{{params.owner}}:{{body.base}}", sha: "{{hex(40)}}" }
+      draft: false
+      merged: false
+      mergeable: true
+      merged_at: null
+      merge_commit_sha: null
+      closed_at: null
+      created_at: "{{nowIso}}"
+      updated_at: "{{nowIso}}"
+      author_association: OWNER
+    onUpdate: { updated_at: "{{nowIso}}" }
+    lifecycle:
+      field: state
+      initial: open
+      transitions:
+        merge:
+          from: [open]
+          to: closed
+          set: { merged: true, merged_at: "{{nowIso}}", closed_at: "{{nowIso}}", merge_commit_sha: "{{hex(40)}}", mergeable: null }
+          emit: [{ type: pull_request.closed, payload: { action: closed, number: "{{obj.number}}", pull_request: "{{$object}}", repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+        close:
+          from: [open]
+          to: closed
+          set: { closed_at: "{{nowIso}}" }
+          emit: [{ type: pull_request.closed, payload: { action: closed, number: "{{obj.number}}", pull_request: "{{$object}}", repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+        reopen:
+          from: [closed]
+          to: open
+          set: { closed_at: null }
+
+webhooks:
+  signing: { scheme: hmac-sha256-hex, header: X-Hub-Signature-256, prefix: "sha256=" }
+  headers: { X-GitHub-Event: "{{$eventName}}", X-GitHub-Delivery: "{{uuid()}}", X-GitHub-Hook-ID: "1" }
+  retries: 2
+
+operations:
+  - method: GET
+    path: "/repos/{owner}/{repo}"
+    action: static
+    response:
+      body:
+        id: 1
+        node_id: R_kgMockAnything
+        name: "{{params.repo}}"
+        full_name: "{{params.owner}}/{{params.repo}}"
+        private: false
+        owner: { login: "{{params.owner}}", id: 1, type: User }
+        html_url: "{{twin.baseUrl}}/{{params.owner}}/{{params.repo}}"
+        description: null
+        fork: false
+        url: "{{twin.baseUrl}}/repos/{{params.owner}}/{{params.repo}}"
+        default_branch: main
+        visibility: public
+        has_issues: true
+        open_issues_count: 0
+        created_at: "2026-01-01T00:00:00Z"
+        updated_at: "{{nowIso}}"
+        pushed_at: "{{nowIso}}"
+        permissions: { admin: true, maintain: true, push: true, triage: true, pull: true }
+  - method: GET
+    path: /user
+    action: static
+    response: { body: { login: mockanything-bot, id: 1, node_id: U_kgMockAnything, type: User, site_admin: false, name: "Mock Anything", email: null } }
+
+  - method: POST
+    path: "/repos/{owner}/{repo}/issues"
+    action: create
+    resource: issues
+    emit: [{ type: issues.opened, payload: { action: opened, issue: "{{$object}}", repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+  - { method: GET, path: "/repos/{owner}/{repo}/issues", action: list, resource: issues }
+  - method: GET
+    path: "/repos/{owner}/{repo}/issues/{issue_number}"
+    action: read
+    resource: issues
+    lookup: { fields: [number], from: "{{params.issue_number}}" }
+  - method: PATCH
+    path: "/repos/{owner}/{repo}/issues/{issue_number}"
+    action: update
+    resource: issues
+    lookup: { fields: [number], from: "{{params.issue_number}}" }
+    then:
+      - { transition: close, when: { all: [{ path: body.state, equals: closed }, { path: obj.state, equals: open }] } }
+      - { transition: reopen, when: { all: [{ path: body.state, equals: open }, { path: obj.state, equals: closed }] } }
+    emit: [{ type: issues.edited, payload: { action: edited, issue: "{{$object}}", repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+
+  - method: POST
+    path: "/repos/{owner}/{repo}/issues/{issue_number}/comments"
+    action: create
+    resource: comments
+    effects:
+      - resource: issues
+        id: "{{params.issue_number}}"
+        lookup: [number]
+        mustExist: { status: 404, message: "Not Found" }
+        inc: { comments: 1 }
+    emit: [{ type: issue_comment.created, payload: { action: created, comment: "{{$object}}", issue: { number: "{{int(params.issue_number)}}" }, repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+  - { method: GET, path: "/repos/{owner}/{repo}/issues/{issue_number}/comments", action: list, resource: comments }
+  - { method: GET, path: "/repos/{owner}/{repo}/issues/comments/{comment_id}", action: read, resource: comments }
+  - { method: PATCH, path: "/repos/{owner}/{repo}/issues/comments/{comment_id}", action: update, resource: comments }
+  - { method: DELETE, path: "/repos/{owner}/{repo}/issues/comments/{comment_id}", action: delete, resource: comments }
+
+  - method: POST
+    path: "/repos/{owner}/{repo}/pulls"
+    action: create
+    resource: pulls
+    emit: [{ type: pull_request.opened, payload: { action: opened, number: "{{obj.number}}", pull_request: "{{$object}}", repository: { name: "{{params.repo}}", full_name: "{{params.owner}}/{{params.repo}}", owner: { login: "{{params.owner}}" } }, sender: { login: mockanything-bot, type: User } } }]
+  - { method: GET, path: "/repos/{owner}/{repo}/pulls", action: list, resource: pulls }
+  - method: GET
+    path: "/repos/{owner}/{repo}/pulls/{pull_number}"
+    action: read
+    resource: pulls
+    lookup: { fields: [number], from: "{{params.pull_number}}" }
+  - method: PATCH
+    path: "/repos/{owner}/{repo}/pulls/{pull_number}"
+    action: update
+    resource: pulls
+    lookup: { fields: [number], from: "{{params.pull_number}}" }
+    then:
+      - { transition: close, when: { all: [{ path: body.state, equals: closed }, { path: obj.state, equals: open }] } }
+      - { transition: reopen, when: { all: [{ path: body.state, equals: open }, { path: obj.state, equals: closed }] } }
+  - method: PUT
+    path: "/repos/{owner}/{repo}/pulls/{pull_number}/merge"
+    action: transition
+    resource: pulls
+    transition: merge
+    lookup: { fields: [number], from: "{{params.pull_number}}" }
+    response: { body: { sha: "{{obj.merge_commit_sha}}", merged: true, message: "Pull Request successfully merged" } }

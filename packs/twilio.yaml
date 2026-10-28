@@ -1,0 +1,170 @@
+# Twin of the Twilio Messaging API (send SMS, status callbacks, list, fetch, delete). Facts only:
+# endpoint paths, field names, error codes and the magic test numbers Twilio documents for test
+# credentials. Reference: Twilio's OpenAPI description (github.com/twilio/twilio-oai, MIT).
+# Not affiliated with or endorsed by Twilio Inc. Twilio and all related logos are trademarks of Twilio Inc.
+schema: 1
+id: twilio
+title: Twilio
+description: Messages (send, status callbacks queued → sent → delivered, fetch, list, delete) with Twilio's documented test numbers and signed callbacks.
+source: { kind: pack, url: "https://github.com/twilio/twilio-oai", license: MIT, notes: "Hand-written from public API facts." }
+basePath: /2010-04-01
+auth: { type: basic }
+notes:
+  - "Nothing is sent. Messages move queued → sent → delivered and POST status callbacks (signed X-Twilio-Signature with your auth token) to StatusCallback."
+  - "Test numbers: To +15005550001 (invalid), +15005550002 (can't route), +15005550003 (no international permission), +15005550004 (blocked/unsubscribed); From +15005550001 (invalid), +15005550007 (not owned), +15005550008 (queue full). Force 'undelivered' from the dashboard or MCP."
+  - "Point twilio-node at the twin: client.api.baseUrl = '<twin URL>' (see `mockanything env twilio`)."
+snippets:
+  node: |
+    import twilio from "twilio";
+    const client = twilio("AC" + "0".repeat(32), "test_auth_token");
+    client.api.baseUrl = "{{baseUrl}}";
+  env: |
+    TWILIO_ACCOUNT_SID=AC00000000000000000000000000000000
+    TWILIO_AUTH_TOKEN=test_auth_token
+    TWILIO_API_BASE={{baseUrl}}
+conventions:
+  idField: sid
+  timestamps: rfc2822
+  createStatus: 201
+  deleteStatus: 204
+  bodyMap: { To: to, From: from, Body: body, StatusCallback: status_callback, MessagingServiceSid: messaging_service_sid, MediaUrl: media_url, PageSize: page_size }
+  listStyle: { kind: page, limitParam: PageSize, pageParam: Page, pageBase: 0, defaultLimit: 50, maxLimit: 1000, order: desc }
+  error: { code: "{{int($code)}}", message: "{{$message}}", more_info: "https://www.twilio.com/docs/errors/{{$code}}", status: "{{$status}}" }
+  errors:
+    notFound: { status: 404, message: "The requested resource was not found", code: "20404" }
+    unauthorized: { status: 401, message: "Authenticate", code: "20003" }
+    missingParam: { status: 400, message: "Missing required parameter {{$param}} in the post body", code: "21201" }
+    rateLimited: { status: 429, message: "Too Many Requests", code: "20429" }
+    serverError: { status: 500, message: "Internal Server Error", code: "20500" }
+
+resources:
+  messages:
+    singular: message
+    id: { style: hex, prefix: SM, length: 32, field: sid }
+    scope: [AccountSid]
+    readonly: [account_sid, api_version, date_created, date_sent, date_updated, direction, error_code, error_message, num_media, num_segments, price, price_unit, uri, subresource_uris]
+    hidden: [status_callback, media_url]
+    filters: { To: to, From: from }
+    defaults:
+      account_sid: "{{params.AccountSid}}"
+      api_version: "2010-04-01"
+      body: "{{body.body ?? ''}}"
+      date_created: "{{nowRfc2822}}"
+      date_sent: null
+      date_updated: "{{nowRfc2822}}"
+      direction: outbound-api
+      error_code: null
+      error_message: null
+      from: "{{body.from ?? null}}"
+      messaging_service_sid: null
+      num_media: "0"
+      num_segments: "1"
+      price: null
+      price_unit: USD
+      to: "{{body.to}}"
+      uri: "/2010-04-01/Accounts/{{params.AccountSid}}/Messages/{{obj.sid}}.json"
+      subresource_uris: { media: "/2010-04-01/Accounts/{{params.AccountSid}}/Messages/{{obj.sid}}/Media.json", feedback: "/2010-04-01/Accounts/{{params.AccountSid}}/Messages/{{obj.sid}}/Feedback.json" }
+    lifecycle:
+      field: status
+      initial: queued
+      initialWhen:
+        - when: { path: body.messaging_service_sid, exists: true }
+          value: accepted
+      transitions:
+        send:
+          from: [queued, accepted]
+          to: sent
+          set: { date_sent: "{{nowRfc2822}}", date_updated: "{{nowRfc2822}}", price: "-0.00790" }
+          emit:
+            - { type: message.sent, to: "{{obj.status_callback}}", format: form, payload: { MessageSid: "{{obj.sid}}", SmsSid: "{{obj.sid}}", AccountSid: "{{obj.account_sid}}", From: "{{obj.from}}", To: "{{obj.to}}", MessageStatus: sent, SmsStatus: sent, ApiVersion: "2010-04-01" } }
+        deliver:
+          from: [sent]
+          to: delivered
+          set: { date_updated: "{{nowRfc2822}}" }
+          emit:
+            - { type: message.delivered, to: "{{obj.status_callback}}", format: form, payload: { MessageSid: "{{obj.sid}}", SmsSid: "{{obj.sid}}", AccountSid: "{{obj.account_sid}}", From: "{{obj.from}}", To: "{{obj.to}}", MessageStatus: delivered, SmsStatus: delivered, ApiVersion: "2010-04-01" } }
+          scenarios: delivery
+        cancel:
+          from: [scheduled, accepted]
+          to: canceled
+      auto:
+        - { afterMs: 300, transition: send }
+        - { afterMs: 300, transition: deliver }
+
+webhooks:
+  signing: { scheme: hmac-sha1-base64-url, header: X-Twilio-Signature, secretFrom: requestKey }
+  retries: 1
+
+scenarios:
+  invalid_to:
+    description: "The To number is not a valid phone number (21211)."
+    on: messages.create
+    when: { path: body.to, equals: "+15005550001" }
+    error: { status: 400, message: "The 'To' number +15005550001 is not a valid phone number.", code: "21211" }
+  cannot_route:
+    description: "The To number can't be routed (21612)."
+    on: messages.create
+    when: { path: body.to, equals: "+15005550002" }
+    error: { status: 400, message: "The 'To' phone number: +15005550002, is not currently reachable using the 'From' phone number via SMS.", code: "21612" }
+  no_international:
+    description: "No permission to send to this region (21408)."
+    on: messages.create
+    when: { path: body.to, equals: "+15005550003" }
+    error: { status: 400, message: "Permission to send an SMS has not been enabled for the region indicated by the 'To' number: +15005550003.", code: "21408" }
+  blocked:
+    description: "The recipient has unsubscribed (21610)."
+    on: messages.create
+    when: { path: body.to, equals: "+15005550004" }
+    error: { status: 400, message: "Attempt to send to unsubscribed recipient", code: "21610" }
+  invalid_from:
+    description: "The From number is not valid (21212)."
+    on: messages.create
+    when: { path: body.from, equals: "+15005550001" }
+    error: { status: 400, message: "The 'From' number +15005550001 is not a valid phone number, shortcode, or alphanumeric sender ID.", code: "21212" }
+  from_not_owned:
+    description: "The From number isn't owned by the account (21606)."
+    on: messages.create
+    when: { path: body.from, equals: "+15005550007" }
+    error: { status: 400, message: "The From phone number +15005550007 is not a valid, SMS-capable inbound phone number or short code for your account.", code: "21606" }
+  queue_full:
+    description: "The sending queue is full (21611)."
+    on: messages.create
+    when: { path: body.from, equals: "+15005550008" }
+    error: { status: 400, message: "This 'From' number has exceeded the maximum number of queued messages", code: "21611" }
+  undelivered:
+    description: "The carrier couldn't deliver the message (30003)."
+    on: delivery
+    to: undelivered
+    set: { error_code: 30003, error_message: "Unreachable destination handset", date_updated: "{{nowRfc2822}}" }
+    emit:
+      - { type: message.undelivered, to: "{{obj.status_callback}}", format: form, payload: { MessageSid: "{{obj.sid}}", SmsSid: "{{obj.sid}}", AccountSid: "{{obj.account_sid}}", From: "{{obj.from}}", To: "{{obj.to}}", MessageStatus: undelivered, SmsStatus: undelivered, ErrorCode: "30003", ApiVersion: "2010-04-01" } }
+
+operations:
+  - method: POST
+    path: "/Accounts/{AccountSid}/Messages.json"
+    action: create
+    resource: messages
+    require:
+      - when: { path: body.to, exists: true }
+        error: { status: 400, message: "A 'To' phone number is required.", code: "21604" }
+      - when: { any: [{ path: body.from, exists: true }, { path: body.messaging_service_sid, exists: true }] }
+        error: { status: 400, message: "A 'From' phone number is required.", code: "21603" }
+      - when: { any: [{ path: body.body, exists: true }, { path: body.media_url, exists: true }] }
+        error: { status: 400, message: "Message body is required.", code: "21602" }
+  - method: GET
+    path: "/Accounts/{AccountSid}/Messages.json"
+    action: list
+    resource: messages
+    response:
+      body:
+        messages: "{{$items}}"
+        page: "{{$page}}"
+        page_size: "{{$limit}}"
+        start: 0
+        end: 0
+        uri: "{{$url}}"
+        first_page_uri: "{{$firstPath}}"
+        next_page_uri: "{{$nextPath}}"
+        previous_page_uri: null
+  - { method: GET, path: "/Accounts/{AccountSid}/Messages/{Sid}.json", action: read, resource: messages, idParam: Sid }
+  - { method: DELETE, path: "/Accounts/{AccountSid}/Messages/{Sid}.json", action: delete, resource: messages, idParam: Sid }

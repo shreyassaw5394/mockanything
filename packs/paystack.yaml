@@ -1,0 +1,276 @@
+# Twin of the Paystack API (accept payments, customers, refunds). Facts only: endpoint paths, field names,
+# event names and the test values Paystack documents. Reference: Paystack's OpenAPI description
+# (github.com/PaystackOSS/openapi, MIT). Not affiliated with or endorsed by Paystack. Paystack is a trademark
+# of Paystack Payments Limited.
+schema: 1
+id: paystack
+title: Paystack
+description: Transactions (initialize, hosted test checkout, verify, charge saved cards), customers, refunds, signed webhooks.
+source: { kind: pack, url: "https://github.com/PaystackOSS/openapi", license: MIT, notes: "Hand-written from public API facts." }
+auth: { type: bearer, livePattern: "^sk_live_" }
+notes:
+  - "Use any test secret key, e.g. sk_test_mockanything. Webhooks are signed with that same key (x-paystack-signature, HMAC SHA512), like Paystack."
+  - "authorization_url opens a local test page: Approve marks the transaction success and sends charge.success; Decline marks it failed."
+  - "Amounts are in the lowest currency unit (kobo for NGN)."
+snippets:
+  node: |
+    const PAYSTACK = "{{baseUrl}}"; // instead of https://api.paystack.co
+    await fetch(`${PAYSTACK}/transaction/initialize`, {
+      method: "POST",
+      headers: { Authorization: "Bearer sk_test_mockanything", "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "customer@example.com", amount: 500000 }),
+    });
+  env: |
+    PAYSTACK_SECRET_KEY=sk_test_mockanything
+    PAYSTACK_BASE_URL={{baseUrl}}
+conventions:
+  timestamps: iso
+  single: { status: true, message: "Successful", data: "{{$data}}" }
+  list:
+    status: true
+    message: "Retrieved"
+    data: "{{$items}}"
+    meta: { total: "{{$total}}", skipped: "{{$skipped}}", perPage: "{{$limit}}", page: "{{$page}}", pageCount: "{{$pageCount}}" }
+  listStyle: { kind: page, limitParam: perPage, pageParam: page, pageBase: 1, defaultLimit: 50, maxLimit: 100, order: desc }
+  error: { status: false, message: "{{$message}}", type: "{{$type}}", code: "{{$code}}" }
+  errors:
+    notFound: { status: 404, message: "{{$resource}} not found", type: validation_error, code: not_found }
+    unauthorized: { status: 401, message: "Invalid key", type: validation_error, code: invalid_key }
+    liveKey: { status: 401, message: "This twin refuses live keys. Use a test key such as sk_test_mockanything.", type: validation_error, code: live_key_refused }
+    missingParam: { status: 400, message: "{{$param}} is required", type: validation_error, code: missing_params }
+    invalidState: { status: 400, message: "This {{$resource}} cannot be {{$transition}}ed because its status is {{$state}}", type: validation_error, code: invalid_state }
+    rateLimited: { status: 429, message: "Too many requests", type: api_error, code: rate_limited }
+    serverError: { status: 500, message: "An error occurred", type: api_error, code: unknown }
+    realCard: { status: 400, message: "This looks like a real card number. Use Paystack's documented test cards; never send real card details to a test server.", type: validation_error, code: real_card_refused }
+testCards: ["4084084084084081", "5060666666666666666", "4084080000000409", "5078585078585078585"]
+
+resources:
+  transactions:
+    singular: Transaction
+    id: { style: int }
+    required: [email, amount]
+    types: { amount: integer }
+    readonly: [domain, status, gateway_response, paid_at, authorization, fees, access_code, authorization_url]
+    hidden: [email, callback_url]
+    filters: { status: status, customer: customer.id, currency: currency }
+    unique:
+      - field: reference
+        error: { status: 400, message: "Duplicate Transaction Reference", type: validation_error, code: duplicate_reference }
+    defaults:
+      domain: test
+      reference: "{{body.reference ?? lower(newId('', 10))}}"
+      amount: "{{body.amount}}"
+      currency: "{{body.currency ?? 'NGN'}}"
+      channel: card
+      gateway_response: null
+      message: null
+      paid_at: null
+      paidAt: null
+      created_at: "{{nowIso}}"
+      createdAt: "{{nowIso}}"
+      ip_address: null
+      metadata: "{{body.metadata ?? ''}}"
+      fees: null
+      log: null
+      plan: null
+      requested_amount: "{{body.amount}}"
+      access_code: "{{lower(newId('', 15))}}"
+      authorization_url: "{{checkoutUrl()}}"
+      authorization: {}
+      customer:
+        id: "{{int(digits(8))}}"
+        email: "{{body.email}}"
+        customer_code: "{{concat('CUS_', lower(newId('', 15)))}}"
+        first_name: null
+        last_name: null
+        phone: null
+        metadata: null
+        risk_action: default
+    lifecycle:
+      field: status
+      initial: abandoned
+      transitions:
+        pay:
+          from: [abandoned, ongoing, pending]
+          to: success
+          set:
+            gateway_response: Successful
+            message: null
+            paid_at: "{{nowIso}}"
+            paidAt: "{{nowIso}}"
+            fees: "{{int(mul(obj.amount, 0.015))}}"
+            authorization:
+              authorization_code: "{{concat('AUTH_', lower(newId('', 10)))}}"
+              bin: "408408"
+              last4: "4081"
+              exp_month: "12"
+              exp_year: "2030"
+              channel: card
+              card_type: "visa "
+              bank: TEST BANK
+              country_code: NG
+              brand: visa
+              reusable: true
+              signature: "{{concat('SIG_', newId('', 20))}}"
+              account_name: null
+          emit: [charge.success]
+        fail:
+          from: [abandoned, ongoing, pending]
+          to: failed
+          set: { gateway_response: Declined, message: "Declined" }
+        charge_saved:
+          to: success
+          set:
+            gateway_response: Approved
+            paid_at: "{{nowIso}}"
+            paidAt: "{{nowIso}}"
+            fees: "{{int(mul(obj.amount, 0.015))}}"
+            authorization: "{{target.authorization}}"
+            access_code: null
+            authorization_url: null
+          emit: [charge.success]
+
+  customers:
+    singular: Customer
+    id: { style: int }
+    required: [email]
+    readonly: [customer_code, integration, domain]
+    unique:
+      - field: email
+        error: { status: 400, message: "Customer already exists", type: validation_error, code: duplicate_customer }
+    defaults:
+      integration: 100032
+      first_name: null
+      last_name: null
+      phone: null
+      metadata: null
+      domain: test
+      customer_code: "{{concat('CUS_', lower(newId('', 15)))}}"
+      risk_action: default
+      identified: false
+      identifications: null
+      createdAt: "{{nowIso}}"
+      updatedAt: "{{nowIso}}"
+    onUpdate: { updatedAt: "{{nowIso}}" }
+
+  refunds:
+    singular: Refund
+    id: { style: int }
+    required: [transaction]
+    types: { amount: integer }
+    readonly: [status, deducted_amount, fully_deducted, refunded_by, expected_at]
+    defaults:
+      integration: 100032
+      domain: test
+      transaction: "{{target.id}}"
+      dispute: null
+      amount: "{{body.amount ?? target.amount}}"
+      deducted_amount: 0
+      fully_deducted: false
+      currency: "{{target.currency}}"
+      channel: card
+      merchant_note: "{{body.merchant_note ?? null}}"
+      customer_note: "{{body.customer_note ?? null}}"
+      refunded_by: "{{target.customer.email}}"
+      expected_at: null
+      createdAt: "{{nowIso}}"
+      updatedAt: "{{nowIso}}"
+    lifecycle:
+      field: status
+      initial: pending
+      transitions:
+        process:
+          from: [pending, processing]
+          to: processed
+          set: { deducted_amount: "{{obj.amount}}", fully_deducted: true, updatedAt: "{{nowIso}}" }
+          emit: [refund.processed]
+      auto:
+        - { afterMs: 1000, transition: process }
+
+webhooks:
+  signing: { scheme: hmac-sha512-hex, header: x-paystack-signature, secretFrom: requestKey }
+  envelope: { event: "{{$type}}", data: "{{$object}}" }
+  retries: 2
+
+checkout:
+  - resource: transactions
+    succeed: pay
+    fail: fail
+    returnUrlField: callback_url
+    returnQuery: { trxref: "{{obj.reference}}", reference: "{{obj.reference}}" }
+    title: "Payment (test)"
+    amountField: amount
+    currencyField: currency
+    amountMinorUnits: true
+
+operations:
+  - method: POST
+    path: /transaction/initialize
+    action: create
+    resource: transactions
+    response:
+      body: { status: true, message: "Authorization URL created", data: { authorization_url: "{{obj.authorization_url}}", access_code: "{{obj.access_code}}", reference: "{{obj.reference}}" } }
+  - method: GET
+    path: "/transaction/verify/{reference}"
+    action: read
+    resource: transactions
+    lookup: { fields: [reference], from: "{{params.reference}}" }
+    response: { body: { status: true, message: "Verification successful", data: "{{$data}}" } }
+  - method: GET
+    path: /transaction
+    action: list
+    resource: transactions
+    response: { body: { status: true, message: "Transactions retrieved", data: "{{$items}}", meta: { total: "{{$total}}", skipped: "{{$skipped}}", perPage: "{{$limit}}", page: "{{$page}}", pageCount: "{{$pageCount}}" } } }
+  - method: GET
+    path: "/transaction/{id}"
+    action: read
+    resource: transactions
+    response: { body: { status: true, message: "Transaction retrieved", data: "{{$data}}" } }
+  - method: POST
+    path: /transaction/charge_authorization
+    action: create
+    resource: transactions
+    require:
+      - when: { path: body.authorization_code, exists: true }
+        error: { status: 400, message: "authorization_code is required", type: validation_error, code: missing_params }
+    effects:
+      - resource: transactions
+        id: "{{body.authorization_code}}"
+        lookup: [authorization.authorization_code]
+        mustExist: { status: 400, message: "Invalid authorization code", type: validation_error, code: invalid_authorization }
+    then: [{ transition: charge_saved }]
+    response: { body: { status: true, message: "Charge attempted", data: "{{$data}}" } }
+
+  - { method: POST, path: /customer, action: create, resource: customers, response: { body: { status: true, message: "Customer created", data: "{{$data}}" } } }
+  - { method: GET, path: /customer, action: list, resource: customers, response: { body: { status: true, message: "Customers retrieved", data: "{{$items}}", meta: { total: "{{$total}}", skipped: "{{$skipped}}", perPage: "{{$limit}}", page: "{{$page}}", pageCount: "{{$pageCount}}" } } } }
+  - method: GET
+    path: "/customer/{email_or_code}"
+    action: read
+    resource: customers
+    lookup: { fields: [email, customer_code], from: "{{params.email_or_code}}" }
+    response: { body: { status: true, message: "Customer retrieved", data: "{{$data}}" } }
+  - method: PUT
+    path: "/customer/{code}"
+    action: update
+    resource: customers
+    lookup: { fields: [customer_code], from: "{{params.code}}" }
+    response: { body: { status: true, message: "Customer updated", data: "{{$data}}" } }
+
+  - method: POST
+    path: /refund
+    action: create
+    resource: refunds
+    effects:
+      - resource: transactions
+        id: "{{body.transaction}}"
+        lookup: [reference]
+        mustExist: { status: 404, message: "Transaction not found", type: validation_error, code: not_found }
+        require:
+          - when: { path: target.status, equals: success }
+            error: { status: 400, message: "Transaction has not been paid", type: validation_error, code: transaction_not_refundable }
+          - when: { path: "{{body.amount ?? target.amount}}", lte: target.amount }
+            error: { status: 400, message: "Refund amount cannot be more than the transaction amount", type: validation_error, code: invalid_amount }
+    emit: [refund.pending]
+    response: { body: { status: true, message: "Refund has been queued for processing", data: "{{$data}}" } }
+  - { method: GET, path: /refund, action: list, resource: refunds, response: { body: { status: true, message: "Refunds retrieved", data: "{{$items}}", meta: { total: "{{$total}}", skipped: "{{$skipped}}", perPage: "{{$limit}}", page: "{{$page}}", pageCount: "{{$pageCount}}" } } } }
+  - { method: GET, path: "/refund/{id}", action: read, resource: refunds, response: { body: { status: true, message: "Refund retrieved", data: "{{$data}}" } } }

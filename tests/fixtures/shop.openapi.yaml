@@ -1,0 +1,98 @@
+openapi: 3.1.0
+info: { title: Tiny Shop, version: "1.0" }
+servers: [{ url: "https://api.tinyshop.example/v2" }]
+components:
+  securitySchemes:
+    key: { type: apiKey, in: header, name: X-Shop-Key }
+  schemas:
+    Order:
+      type: object
+      required: [id, status, total]
+      properties:
+        id: { type: string, example: ord_8f2k1LmQ9xZt }
+        status: { type: string, enum: [pending, paid, shipped, cancelled] }
+        total: { type: integer }
+        currency: { type: string }
+        customer_id: { type: string }
+        created_at: { type: string, format: date-time }
+    Customer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+    Error:
+      type: object
+      properties:
+        error: { type: object, properties: { code: { type: string }, message: { type: string } } }
+security: [{ key: [] }]
+paths:
+  /customers:
+    post:
+      requestBody: { content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string }, name: { type: string } } } } } }
+      responses:
+        "201": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "400": { description: bad, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /customers/{id}:
+    get:
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } } }
+  /orders:
+    get:
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Order" } }
+                  has_more: { type: boolean }
+                  next_cursor: { type: string }
+    post:
+      requestBody: { content: { application/json: { schema: { type: object, required: [total], properties: { total: { type: integer }, currency: { type: string }, customer_id: { type: string } } } } } }
+      responses:
+        "201": { description: ok, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean, example: true }, order: { $ref: "#/components/schemas/Order" } } } } } }
+        "400": { description: bad, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /orders/{order_id}:
+    get:
+      parameters: [{ name: order_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean, example: true }, order: { $ref: "#/components/schemas/Order" } } } } } }
+        "404": { description: missing, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      parameters: [{ name: order_id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: gone } }
+  /orders/{order_id}/pay:
+    post:
+      parameters: [{ name: order_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean, example: true }, order: { $ref: "#/components/schemas/Order" } } } } } } }
+  /orders/{order_id}/cancel:
+    post:
+      parameters: [{ name: order_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean, example: true }, order: { $ref: "#/components/schemas/Order" } } } } } } }
+  /stores/{store_id}/products:
+    get:
+      parameters: [{ name: store_id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: array, items: { type: object, properties: { id: { type: integer }, title: { type: string } } } } } } } }
+    post:
+      parameters: [{ name: store_id, in: path, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { title: { type: string } } } } } }
+      responses: { "201": { description: ok, content: { application/json: { schema: { type: object, properties: { id: { type: integer }, title: { type: string } } } } } } }
+webhooks:
+  order.paid:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type: { type: string }
+                order: { $ref: "#/components/schemas/Order" }
+      responses: { "200": { description: ok } }

@@ -1,0 +1,105 @@
+# Twin of the Resend email API (send, retrieve, list, schedule, cancel, delivery events). Facts only:
+# endpoint paths, field names, event names and Resend's documented test addresses. Reference: Resend's
+# OpenAPI description (github.com/resend/resend-openapi, MIT). Not affiliated with or endorsed by Resend.
+# Resend is a trademark of its owner.
+schema: 1
+id: resend
+title: Resend
+description: Send, retrieve, list, schedule and cancel emails; delivery, bounce and complaint events with Svix-signed webhooks.
+source: { kind: pack, url: "https://github.com/resend/resend-openapi", license: MIT, notes: "Hand-written from public API facts." }
+auth: { type: bearer, warnPattern: "^re_[A-Za-z0-9]{8,}_[A-Za-z0-9]{8,}" }
+notes:
+  - "Nothing is emailed. Emails move queued → sent → delivered on their own; send to bounced@resend.dev or complained@resend.dev to get those events."
+  - "Point the official SDK at the twin with RESEND_BASE_URL. Webhooks are Svix-signed with the secret shown at start."
+snippets:
+  node: |
+    process.env.RESEND_BASE_URL = "{{baseUrl}}";
+    const { Resend } = await import("resend");
+    const resend = new Resend("re_test_mockanything");
+    // webhook secret (Svix): {{secret}}
+  env: |
+    RESEND_API_KEY=re_test_mockanything
+    RESEND_BASE_URL={{baseUrl}}
+    RESEND_WEBHOOK_SECRET={{secret}}
+conventions:
+  timestamps: iso
+  list: { object: list, has_more: "{{$hasMore}}", data: "{{$items}}" }
+  listStyle: { kind: cursor, limitParam: limit, afterParam: after, beforeParam: before, defaultLimit: 20, maxLimit: 100, order: desc }
+  error: { statusCode: "{{$status}}", message: "{{$message}}", name: "{{$code}}" }
+  errors:
+    notFound: { status: 404, message: "{{$resource}} not found", code: not_found }
+    unauthorized: { status: 401, message: "Missing API key in the authorization header. Include the following header in the request: Authorization: Bearer YOUR_API_KEY", code: missing_api_key }
+    missingParam: { status: 422, message: "Missing `{{$param}}` field.", code: missing_required_field }
+    invalidState: { status: 422, message: "This email cannot be {{$transition}}ed because it is {{$state}}.", code: validation_error }
+    rateLimited: { status: 429, message: "Too many requests. You can only make 2 requests per second.", code: rate_limit_exceeded }
+    serverError: { status: 500, message: "An unexpected error occurred.", code: application_error }
+
+resources:
+  emails:
+    singular: Email
+    id: { style: uuid }
+    required: [from, to, subject]
+    types: { to: array, cc: array, bcc: array, reply_to: array, tags: array }
+    readonly: [object, created_at, last_event]
+    filters: {}
+    defaults:
+      object: email
+      created_at: "{{nowIso}}"
+      bcc: null
+      cc: null
+      reply_to: null
+      html: null
+      text: null
+      scheduled_at: null
+      tags: null
+    lifecycle:
+      field: last_event
+      initial: queued
+      initialWhen:
+        - when: { path: body.scheduled_at, exists: true }
+          value: scheduled
+      transitions:
+        send:
+          from: [queued]
+          to: sent
+          emit: [email.sent]
+        deliver:
+          from: [sent]
+          to: delivered
+          emit: [email.delivered]
+        bounce:
+          from: [sent]
+          to: bounced
+          emit: [email.bounced]
+        complain:
+          from: [delivered]
+          to: complained
+          emit: [email.complained]
+        cancel:
+          from: [scheduled]
+          to: canceled
+      auto:
+        - { afterMs: 300, transition: send }
+        - { afterMs: 300, transition: bounce, when: { path: "obj.to[0]", equals: bounced@resend.dev } }
+        - { afterMs: 1, transition: deliver, when: { not: { path: "obj.to[0]", equals: bounced@resend.dev } } }
+        - { afterMs: 300, transition: complain, when: { path: "obj.to[0]", equals: complained@resend.dev } }
+
+webhooks:
+  signing: { scheme: svix }
+  retries: 2
+  envelope:
+    type: "{{$type}}"
+    created_at: "{{$createdIso}}"
+    data:
+      created_at: "{{obj.created_at}}"
+      email_id: "{{obj.id}}"
+      from: "{{obj.from}}"
+      to: "{{obj.to}}"
+      subject: "{{obj.subject}}"
+
+operations:
+  - { method: POST, path: /emails, action: create, resource: emails, response: { body: { id: "{{obj.id}}" } } }
+  - { method: GET, path: /emails, action: list, resource: emails }
+  - { method: GET, path: "/emails/{id}", action: read, resource: emails }
+  - { method: PATCH, path: "/emails/{id}", action: update, resource: emails, response: { body: { object: email, id: "{{obj.id}}" } } }
+  - { method: POST, path: "/emails/{id}/cancel", action: transition, resource: emails, transition: cancel, response: { body: { object: email, id: "{{obj.id}}" } } }

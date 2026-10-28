@@ -1,0 +1,63 @@
+{
+  "name": "mockanything",
+  "version": "0.1.0",
+  "description": "Mock Anything: a working, stateful twin of any API on your laptop in one command. For developers and AI agents. No keys, no sandbox sign-up, no bill.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "homepage": "https://mockanything.dev",
+  "keywords": [
+    "mock",
+    "api-mock",
+    "mock-server",
+    "openapi",
+    "stateful",
+    "webhooks",
+    "chaos-testing",
+    "agents",
+    "mcp",
+    "mcp-server",
+    "testing",
+    "sandbox"
+  ],
+  "bin": {
+    "mockanything": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "packs",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli/index.ts",
+    "test": "vitest run",
+    "lint": "oxlint src tests",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "undici": "^8.12.3",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@octokit/rest": "^22.0.1",
+    "@types/node": "^26.6.5",
+    "oxlint": "^1.89.0",
+    "resend": "^6.34.1",
+    "stripe": "^23.0.1",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "twilio": "^6.2.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
