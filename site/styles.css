@@ -326,3 +326,7 @@ h2{font-size:var(--x-head)}
 main p,main li,main figcaption{text-wrap:pretty}
 main p{max-width:68ch}
 .lu td,.lu th{max-width:none}
+
+/* the hero text block must not swallow clicks meant for the stage beneath it */
+.hero-text{pointer-events:none}
+.hero-text>*{pointer-events:auto}
