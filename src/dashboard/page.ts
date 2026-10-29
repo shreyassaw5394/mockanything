@@ -5,8 +5,8 @@ export function dashboardHtml(nonce: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><link rel="icon" href="data:,"><title>Mock Anything</title>
 <style>
-:root { color-scheme: light dark; --bg:#fafaf9; --fg:#18181b; --muted:#71717a; --card:#fff; --line:#e4e4e7; --accent:#2563eb; --ok:#15803d; --bad:#b91c1c; --warn:#a16207; --code:#f4f4f5; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0c0c0e; --fg:#f4f4f5; --muted:#a1a1aa; --card:#151518; --line:#27272a; --accent:#60a5fa; --ok:#4ade80; --bad:#f87171; --warn:#facc15; --code:#1c1c20; } }
+:root { color-scheme: light dark; --bg:#fafaf9; --fg:#18181b; --muted:#71717a; --card:#fff; --line:#e4e4e7; --accent:#c2410c; --ok:#15803d; --bad:#b91c1c; --warn:#a16207; --code:#f4f4f5; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0c0c0e; --fg:#f4f4f5; --muted:#a1a1aa; --card:#151518; --line:#27272a; --accent:#ff7a45; --ok:#4ade80; --bad:#f87171; --warn:#facc15; --code:#1c1c20; } }
 * { box-sizing:border-box; }
 body { margin:0; font:14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--fg); }
 header { padding:16px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
@@ -112,9 +112,9 @@ input, select { font:inherit; padding:6px 8px; border-radius:6px; border:1px sol
     }
   }
 
-  document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => { tab = b.dataset.tab; document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", String(x === b))); render(); }));
+  document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", async () => { tab = b.dataset.tab; document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", String(x === b))); await loadInfo(); render(); }));
   let pending = false;
-  const refresh = () => { if (pending) return; pending = true; setTimeout(() => { pending = false; render(); }, 250); };
+  const refresh = () => { if (pending) return; pending = true; setTimeout(async () => { pending = false; if (tab === "webhooks" || tab === "controls") await loadInfo(); render(); }, 250); };
   loadInfo().then(ok => { if (!ok) return; render(); const es = new EventSource("/__mockanything/api/stream?token=" + encodeURIComponent(token)); es.onmessage = refresh; ["request", "delivery", "state"].forEach(k => es.addEventListener(k, refresh)); });
 })();
 </script></body></html>`;
