@@ -12,9 +12,11 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
-<header class="nav">
-  <a class="wordmark" href="/">Mock Anything</a>
-  <a class="pill" href="/#start">Get started</a>
+<header class="top">
+  <div class="wrap top-row">
+    <a class="brand" href="/" aria-label="Mock Anything home"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17"/><rect x="11.5" y="11.5" width="17" height="17"/></svg><span>Mock Anything</span></a>
+    <nav class="nav" aria-label="Site"><a href="/#twin">Twin</a><a href="/#packs">Packs</a><a href="/#agents">Agents</a><a href="/#faq">FAQ</a></nav>
+  </div>
 </header>
 <main class="doc">
   <h1>Terms</h1>
@@ -24,7 +26,7 @@
   <p>These terms cover the website at mockanything.dev and the Mock Anything software. By using either, you agree to them. Mock Anything is a free, non-commercial passion project run by Shreyas Sawant, an independent developer.</p>
 
   <h2>The software and its licence</h2>
-  <p>The software is open source under the <a href="/license.txt">Apache License 2.0</a>. That licence governs your use, copying and distribution of the code. Third-party notices are in <a href="/notice.txt">NOTICE</a>, and the website font licence is in <a href="/fonts/OFL.txt">OFL.txt</a>.</p>
+  <p>The software is open source under the <a href="/license.txt">Apache License 2.0</a>. That licence governs your use, copying and distribution of the code. Third-party notices are in <a href="/notice.txt">NOTICE</a>, and the website fonts (Archivo and IBM Plex Mono) are used under the SIL Open Font License: <a href="/fonts/OFL-Archivo.txt">Archivo licence</a>, <a href="/fonts/OFL-IBMPlexMono.txt">IBM Plex Mono licence</a>.</p>
 
   <h2>What it is, and isn't</h2>
   <p>Mock Anything simulates APIs on your computer for development and testing. Simulated responses are approximations built from public information and may differ from the real services. It does not process payments, send messages or emails, or connect to any provider unless you explicitly ask it to fetch a document. Before relying on an integration in production, test it against the provider's own sandbox.</p>
@@ -57,12 +59,15 @@
   <h2>Contact</h2>
   <p><a href="mailto:shreyassaw@gmail.com">shreyassaw@gmail.com</a></p>
 </main>
-<footer class="footer">
-  <div class="inner wide">
-    <div class="foot-row">
-      <span class="wordmark">Mock Anything</span>
-      <nav class="foot-links" aria-label="Footer"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/license.txt">Licence</a><a href="/notice.txt">Notices</a></nav>
-    </div>
+<footer class="foot">
+  <div class="wrap foot-grid">
+    <p class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17"/><rect x="11.5" y="11.5" width="17" height="17"/></svg><span>Mock Anything</span></p>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/license.txt">Licence</a>
+      <a href="/notice.txt">Notices</a>
+    </nav>
     <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub and other names are trademarks of their respective owners, used only to describe compatibility.</p>
   </div>
 </footer>

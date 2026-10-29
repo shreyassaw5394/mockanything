@@ -12,9 +12,11 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
-<header class="nav">
-  <a class="wordmark" href="/">Mock Anything</a>
-  <a class="pill" href="/#start">Get started</a>
+<header class="top">
+  <div class="wrap top-row">
+    <a class="brand" href="/" aria-label="Mock Anything home"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17"/><rect x="11.5" y="11.5" width="17" height="17"/></svg><span>Mock Anything</span></a>
+    <nav class="nav" aria-label="Site"><a href="/#twin">Twin</a><a href="/#packs">Packs</a><a href="/#agents">Agents</a><a href="/#faq">FAQ</a></nav>
+  </div>
 </header>
 <main class="doc">
   <h1>Privacy</h1>
@@ -31,14 +33,14 @@
 
   <h2>The website</h2>
   <p>The site is static and hosted by Vercel Inc. (United States). To deliver and protect the site, Vercel processes standard request data for every visit: IP address, browser user agent, the page requested and the time. Vercel keeps this data for a short period under its own <a href="https://vercel.com/legal/privacy-policy">privacy policy</a>. We do not use it to identify or profile visitors.</p>
-  <table>
+  <div class="doc-wrap"><table>
     <thead><tr><th>Category</th><th>What</th><th>Why</th><th>Kept</th></tr></thead>
     <tbody>
       <tr><td>Server logs</td><td>IP address, user agent, page, time</td><td>Delivering and securing the site (legitimate interest)</td><td>Short-term, by Vercel</td></tr>
       <tr><td>Cookies and local storage</td><td>None</td><td>–</td><td>–</td></tr>
       <tr><td>Analytics, pixels, session replay</td><td>None</td><td>–</td><td>–</td></tr>
     </tbody>
-  </table>
+  </table></div>
   <p>Links to other sites (for example GitHub or npm) are governed by those sites' own policies once you follow them.</p>
 
   <h2>The tool</h2>
@@ -66,12 +68,15 @@
   <h2>Changes</h2>
   <p>If this policy changes, we will update this page and the date at the top. Significant changes will be noted on the home page.</p>
 </main>
-<footer class="footer">
-  <div class="inner wide">
-    <div class="foot-row">
-      <span class="wordmark">Mock Anything</span>
-      <nav class="foot-links" aria-label="Footer"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/license.txt">Licence</a><a href="/notice.txt">Notices</a></nav>
-    </div>
+<footer class="foot">
+  <div class="wrap foot-grid">
+    <p class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17"/><rect x="11.5" y="11.5" width="17" height="17"/></svg><span>Mock Anything</span></p>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/license.txt">Licence</a>
+      <a href="/notice.txt">Notices</a>
+    </nav>
     <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub and other names are trademarks of their respective owners, used only to describe compatibility.</p>
   </div>
 </footer>

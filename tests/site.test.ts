@@ -17,7 +17,7 @@ const resolveLocal = (href: string): boolean => {
 describe("website", () => {
   it("has the pages it links to", () => {
     expect(pages).toEqual(expect.arrayContaining(["index.html", "privacy.html", "terms.html", "404.html"]));
-    for (const f of ["styles.css", "site.js", "favicon.svg", "og.png", "license.txt", "notice.txt", "fonts/JetBrainsMono-500.woff2", "fonts/OFL.txt"]) expect(existsSync(join(root, f)), f).toBe(true);
+    for (const f of ["styles.css", "site.js", "favicon.svg", "og.png", "license.txt", "notice.txt", "fonts/Archivo-var.woff2", "fonts/IBMPlexMono-400.woff2", "fonts/IBMPlexMono-500.woff2", "fonts/OFL-Archivo.txt", "fonts/OFL-IBMPlexMono.txt"]) expect(existsSync(join(root, f)), f).toBe(true);
   });
 
   for (const page of pages) {
