@@ -26,7 +26,8 @@
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="/" aria-label="Mock Anything home"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="18" height="18"/><rect class="m2" x="12" y="12" width="18" height="18"/></svg><span>Mock Anything</span></a>
-  <nav class="nav" aria-label="Sections">
+  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu"><i></i><i></i></button>
+  <nav class="nav" id="site-nav" aria-label="Sections">
     <a href="#answers">How it works</a>
     <a href="#apis">Any API</a>
     <a href="#chaos">Chaos</a>
@@ -105,21 +106,21 @@
     <thead class="sr"><tr><th scope="col">API</th><th scope="col">What it covers</th><th scope="col">Source</th><th scope="col">Command</th></tr></thead>
     <tbody>
       <tr class="lu-h"><th colspan="4" scope="colgroup">Built-in packs</th></tr>
-      <tr><th scope="row">Stripe</th><td>Payments, refunds, Checkout</td><td>pack</td><td><code translate="no">npx mockanything stripe</code></td></tr>
-      <tr><th scope="row">Paystack</th><td>Transactions, saved cards</td><td>pack</td><td><code translate="no">npx mockanything paystack</code></td></tr>
-      <tr><th scope="row">Twilio</th><td>SMS and status callbacks</td><td>pack</td><td><code translate="no">npx mockanything twilio</code></td></tr>
-      <tr><th scope="row">Resend</th><td>Email, bounces, scheduling</td><td>pack</td><td><code translate="no">npx mockanything resend</code></td></tr>
-      <tr><th scope="row">GitHub</th><td>Issues, comments, pull requests</td><td>pack</td><td><code translate="no">npx mockanything github</code></td></tr>
-      <tr><th scope="row">OpenAI</th><td>Chat, responses, embeddings, canned replies</td><td>pack</td><td><code translate="no">npx mockanything openai</code></td></tr>
+      <tr><th scope="row">Stripe</th><td>Payments, refunds, Checkout</td><td>pack</td><td><button class="lu-copy" type="button" data-copy="npx mockanything stripe"><code translate="no">npx mockanything stripe</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">Paystack</th><td>Transactions, saved cards</td><td>pack</td><td><button class="lu-copy" type="button" data-copy="npx mockanything paystack"><code translate="no">npx mockanything paystack</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">Twilio</th><td>SMS and status callbacks</td><td>pack</td><td><button class="lu-copy" type="button" data-copy="npx mockanything twilio"><code translate="no">npx mockanything twilio</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">Resend</th><td>Email, bounces, scheduling</td><td>pack</td><td><button class="lu-copy" type="button" data-copy="npx mockanything resend"><code translate="no">npx mockanything resend</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">GitHub</th><td>Issues, comments, pull requests</td><td>pack</td><td><button class="lu-copy" type="button" data-copy="npx mockanything github"><code translate="no">npx mockanything github</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">OpenAI</th><td>Chat, responses, embeddings, canned replies</td><td>pack</td><td><button class="lu-copy" type="button" data-copy="npx mockanything openai"><code translate="no">npx mockanything openai</code><span class="lu-act">Copy</span></button></td></tr>
       <tr class="lu-h"><th colspan="4" scope="colgroup">Any other API, by name</th></tr>
-      <tr><th scope="row">Slack</th><td>Slack Web API</td><td>inferred</td><td><code translate="no">npx mockanything slack</code></td></tr>
-      <tr><th scope="row">Notion</th><td>Notion API</td><td>inferred</td><td><code translate="no">npx mockanything notion</code></td></tr>
-      <tr><th scope="row">Spotify</th><td>Spotify Web API</td><td>inferred</td><td><code translate="no">npx mockanything spotify</code></td></tr>
-      <tr><th scope="row">Jira</th><td>Jira Cloud platform</td><td>inferred</td><td><code translate="no">npx mockanything jira</code></td></tr>
-      <tr><th scope="row">Asana</th><td>Asana API</td><td>inferred</td><td><code translate="no">npx mockanything asana</code></td></tr>
+      <tr><th scope="row">Slack</th><td>Slack Web API</td><td>inferred</td><td><button class="lu-copy" type="button" data-copy="npx mockanything slack"><code translate="no">npx mockanything slack</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">Notion</th><td>Notion API</td><td>inferred</td><td><button class="lu-copy" type="button" data-copy="npx mockanything notion"><code translate="no">npx mockanything notion</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">Spotify</th><td>Spotify Web API</td><td>inferred</td><td><button class="lu-copy" type="button" data-copy="npx mockanything spotify"><code translate="no">npx mockanything spotify</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">Jira</th><td>Jira Cloud platform</td><td>inferred</td><td><button class="lu-copy" type="button" data-copy="npx mockanything jira"><code translate="no">npx mockanything jira</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">Asana</th><td>Asana API</td><td>inferred</td><td><button class="lu-copy" type="button" data-copy="npx mockanything asana"><code translate="no">npx mockanything asana</code><span class="lu-act">Copy</span></button></td></tr>
       <tr class="lu-h"><th colspan="4" scope="colgroup">Your own</th></tr>
-      <tr><th scope="row">Your spec</th><td>OpenAPI 3 or Swagger 2</td><td>file or URL</td><td><code translate="no">npx mockanything api.yaml</code></td></tr>
-      <tr><th scope="row">A recording</th><td>HAR from DevTools or a proxy</td><td>file</td><td><code translate="no">npx mockanything app.har</code></td></tr>
+      <tr><th scope="row">Your spec</th><td>OpenAPI 3 or Swagger 2</td><td>file or URL</td><td><button class="lu-copy" type="button" data-copy="npx mockanything api.yaml"><code translate="no">npx mockanything api.yaml</code><span class="lu-act">Copy</span></button></td></tr>
+      <tr><th scope="row">A recording</th><td>HAR from DevTools or a proxy</td><td>file</td><td><button class="lu-copy" type="button" data-copy="npx mockanything app.har"><code translate="no">npx mockanything app.har</code><span class="lu-act">Copy</span></button></td></tr>
       <tr><th scope="row">Just the docs</th><td>Your agent writes the twin</td><td>MCP</td><td><code translate="no">twin_from_docs(url)</code></td></tr>
     </tbody>
   </table>
@@ -127,8 +128,12 @@
 
 <section id="chaos" class="bands" aria-labelledby="chaos-title">
   <div class="bands-head">
-    <div data-r><h2 id="chaos-title">Break it on purpose.</h2><p>Turn on chaos and the twin misbehaves like a provider on a bad day. Flip a switch to see what each mode does to your app.</p></div>
-    <figure class="g chaos-pic" data-r><img src="/media/dashboard-scenarios.jpg" width="1400" height="896" alt="Dashboard panel with chaos modes and forced card scenarios" loading="lazy"><figcaption>The same switches, in the twin's dashboard.</figcaption></figure>
+    <div data-r><h2 id="chaos-title">Break it on purpose.</h2><p>Turn on chaos and the twin misbehaves like a provider on a bad day. Flip a switch and watch what your app would get.</p></div>
+    <figure class="g chaos-live" data-r>
+      <div class="cl-head"><span>Your app → Stripe twin</span><span id="cl-stats" aria-live="polite"></span></div>
+      <ol class="cl-log" id="cl-log" aria-label="Requests and webhooks, newest first"></ol>
+      <figcaption>Simulated in your browser with the twin's own chaos modes. Flip a switch below and watch.</figcaption>
+    </figure>
   </div>
   <div class="band" data-mode="timeout" data-r><p class="band-s">Requests time out.</p><p class="band-c">Some requests hang until your client gives up.</p><button class="sw" type="button" role="switch" aria-checked="true" aria-label="Timeouts"><i></i></button></div>
   <div class="band" data-mode="5xx" data-r><p class="band-s">The provider has a bad day.</p><p class="band-c">500, 502 and 503, in the provider's own error shape.</p><button class="sw" type="button" role="switch" aria-checked="false" aria-label="Server errors"><i></i></button></div>
@@ -180,12 +185,12 @@ mockanything list             built-in packs</code></pre>
 
 <section class="proof" aria-labelledby="proof-title">
   <div class="tile tile-head" data-r><h2 id="proof-title">Checked with the official SDKs.</h2></div>
-  <div class="tile" data-r><p class="tile-n">stripe</p><p>Customers, payments, declines, refunds, signed webhooks.</p></div>
-  <div class="tile" data-r><p class="tile-n">twilio</p><p>Messages and status callbacks through twilio-node.</p></div>
-  <div class="tile" data-r><p class="tile-n">@octokit/rest</p><p>Issues, comments and pull requests per repo.</p></div>
-  <div class="tile" data-r><p class="tile-n">resend</p><p>Send, schedule, cancel, with Svix-signed events.</p></div>
+  <button class="tile tile-btn" type="button" data-copy="npx mockanything stripe" data-r><p class="tile-n">stripe</p><p>Customers, payments, declines, refunds, signed webhooks.</p><span class="tile-act">Copy <code translate="no">npx mockanything stripe</code></span></button>
+  <button class="tile tile-btn" type="button" data-copy="npx mockanything twilio" data-r><p class="tile-n">twilio</p><p>Messages and status callbacks through twilio-node.</p><span class="tile-act">Copy <code translate="no">npx mockanything twilio</code></span></button>
+  <button class="tile tile-btn" type="button" data-copy="npx mockanything github" data-r><p class="tile-n">@octokit/rest</p><p>Issues, comments and pull requests per repo.</p><span class="tile-act">Copy <code translate="no">npx mockanything github</code></span></button>
+  <button class="tile tile-btn" type="button" data-copy="npx mockanything resend" data-r><p class="tile-n">resend</p><p>Send, schedule, cancel, with Svix-signed events.</p><span class="tile-act">Copy <code translate="no">npx mockanything resend</code></span></button>
   <div class="tile" data-r><p class="tile-n">2,528 of 2,528</p><p>APIs in the public directory start a twin. 37,770 calls, no server errors.</p></div>
-  <div class="tile" data-r><p class="tile-n">83 ms</p><p>GitHub's 1,254-operation spec to a working twin.</p></div>
+  <button class="tile tile-btn" type="button" data-copy="npx mockanything openai" data-r><p class="tile-n">openai</p><p>Chat, tool calls, responses and embeddings, with canned [mock] replies.</p><span class="tile-act">Copy <code translate="no">npx mockanything openai</code></span></button>
 </section>
 
 <section id="safe" class="safe" aria-labelledby="safe-title">

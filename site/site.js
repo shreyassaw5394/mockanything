@@ -5,17 +5,39 @@
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-  const copyText = async (text) => { try { await navigator.clipboard.writeText(text); const l = document.getElementById("live"); if (l) l.textContent = `Copied: ${text}`; return true; } catch { return false; } };
+  const copyText = async (text) => {
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch {
+      // clipboard API blocked (permissions, older browsers): fall back to a hidden textarea
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.append(ta); ta.select();
+      try { ok = document.execCommand("copy"); } catch { ok = false; }
+      ta.remove();
+    }
+    const l = document.getElementById("live"); if (l && ok) l.textContent = `Copied: ${text}`;
+    return ok;
+  };
 
-  // ---- copy buttons ----
-  for (const b of $$(".cmd[data-copy]")) {
+  // ---- copy buttons (hero, install tabs, API table, SDK tiles) ----
+  for (const b of $$("button[data-copy]")) {
     b.addEventListener("click", async () => {
       if (!(await copyText(b.dataset.copy))) return;
-      const act = $(".cmd-act", b);
+      const act = $(".cmd-act, .lu-act, .tile-act", b);
+      const before = act ? act.innerHTML : "";
       b.classList.add("done");
-      if (act) act.textContent = "Copied";
-      setTimeout(() => { b.classList.remove("done"); if (act) act.textContent = "Copy"; }, 1600);
+      if (act) act.textContent = act.classList.contains("tile-act") ? `Copied ${b.dataset.copy}` : "Copied";
+      setTimeout(() => { b.classList.remove("done"); if (act) act.innerHTML = before; }, 1600);
     });
+  }
+
+  // ---- phone menu ----
+  const menu = $(".menu-btn"), top = $(".top");
+  if (menu && top) {
+    const setOpen = (open) => { top.classList.toggle("open", open); menu.setAttribute("aria-expanded", String(open)); menu.setAttribute("aria-label", open ? "Close menu" : "Menu"); };
+    menu.addEventListener("click", () => setOpen(!top.classList.contains("open")));
+    for (const a of $$(".nav a")) a.addEventListener("click", () => setOpen(false));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && top.classList.contains("open")) { setOpen(false); menu.focus(); } });
   }
 
   // ---- tabs ----
@@ -48,7 +70,7 @@
       const ms = target - Date.now();
       if (ms <= 0) { cd.textContent = "Live now"; return; }
       const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
-      cd.textContent = `Launch in ${d}d ${two(h)}:${two(m)}:${two(s)}`;
+      cd.textContent = window.matchMedia("(max-width: 640px)").matches ? `Launch in ${d}d ${h}h` : `Launch in ${d}d ${two(h)}:${two(m)}:${two(s)}`;
       setTimeout(tick, 1000 - (Date.now() % 1000));
     };
     tick();
@@ -81,12 +103,60 @@
     });
   }
 
-  // ---- chaos switches ----
+  // ---- chaos: switches drive a simulated request log (same modes as the twin; nothing leaves the page) ----
+  const log = $("#cl-log"), stats = $("#cl-stats");
+  const modes = {};
+  let seed = 42, sent = 0, failed = 0, nextId = 1000;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2 ** 32; };
+  const CALLS = ["POST /v1/payment_intents", "GET  /v1/customers/cus_8Hk2", "POST /v1/refunds", "GET  /v1/payment_intents/pi_3Jd7", "POST /v1/customers"];
+  const line = (cls, text) => {
+    if (!log) return;
+    const li = document.createElement("li");
+    li.className = cls; li.textContent = text;
+    log.prepend(li);
+    while (log.children.length > 9) log.lastElementChild.remove();
+    if (stats) stats.textContent = `${sent} requests · ${failed} failed`;
+  };
+  const request = (force) => {
+    const call = CALLS[Math.floor(rnd() * CALLS.length)];
+    const on = ["timeout", "5xx", "429"].filter((m) => modes[m]);
+    const mode = force ?? (on.length && rnd() < 0.35 ? on[Math.floor(rnd() * on.length)] : null);
+    sent++;
+    if (mode === "timeout") { failed++; return line("bad", `${call}  → 504 after 30 s (timeout)`); }
+    if (mode === "5xx") { failed++; return line("bad", `${call}  → ${[500, 502, 503][Math.floor(rnd() * 3)]} api_error`); }
+    if (mode === "429") { failed++; return line("warn", `${call}  → 429 rate_limit, Retry-After: 1`); }
+    line("ok", `${call}  → 200  ${40 + Math.floor(rnd() * 60)} ms`);
+  };
+  const webhook = (force) => {
+    const id = `evt_${(nextId++).toString(36)}`;
+    const dup = force === "dup" || (modes.dup && rnd() < 0.5);
+    const order = force === "order" || (modes.order && rnd() < 0.5);
+    if (order) {
+      line("warn", `webhook payment_intent.succeeded  ${id}  (arrived first)`);
+      line("warn", `webhook payment_intent.created    ${id}  (arrived second)`);
+    } else line("hook", `webhook payment_intent.succeeded  ${id}`);
+    if (dup) line("warn", `webhook payment_intent.succeeded  ${id}  (duplicate)`);
+  };
+  const tickChaos = () => (rnd() < 0.7 ? request() : webhook());
   for (const band of $$(".band")) {
     const sw = $(".sw", band);
-    const set = (on) => { sw.setAttribute("aria-checked", String(on)); band.classList.toggle("on", on); };
-    set(sw.getAttribute("aria-checked") === "true");
-    sw.addEventListener("click", () => set(sw.getAttribute("aria-checked") !== "true"));
+    const set = (on, demo) => {
+      sw.setAttribute("aria-checked", String(on)); band.classList.toggle("on", on); modes[band.dataset.mode] = on;
+      if (on && demo) { const m = band.dataset.mode; if (m === "dup" || m === "order") webhook(m); else request(m); }
+    };
+    set(sw.getAttribute("aria-checked") === "true", false);
+    sw.addEventListener("click", (e) => { e.stopPropagation(); set(sw.getAttribute("aria-checked") !== "true", true); });
+    band.addEventListener("click", () => sw.click());
+  }
+  if (log) {
+    for (let i = 0; i < 6; i++) tickChaos();
+    if (!reduce && "IntersectionObserver" in window) {
+      let timer = 0;
+      new IntersectionObserver(([e]) => {
+        clearInterval(timer);
+        if (e.isIntersecting) timer = setInterval(() => { if (!document.hidden) tickChaos(); }, 900);
+      }).observe(log);
+    }
   }
 
   // ---- the sentence with a blank ----
@@ -135,8 +205,11 @@
     let userPaused = false;
     const label = () => { if (ctl) ctl.textContent = video.paused ? "Play" : "Pause"; };
     video.addEventListener("play", label); video.addEventListener("pause", label);
-    if (ctl) { ctl.hidden = false; ctl.addEventListener("click", () => { userPaused = !video.paused; if (userPaused) video.pause(); else video.play().catch(() => {}); }); }
-    new IntersectionObserver((es) => { for (const e of es) { if (e.isIntersecting && !userPaused) video.play().catch(() => {}); else video.pause(); } }, { threshold: 0.2 }).observe(video);
+    label();
+    // autoplay can be blocked (low-power mode, data saver): the button then says Play and starts it on click
+    const play = () => video.play().catch(() => label());
+    if (ctl) { ctl.hidden = false; ctl.addEventListener("click", () => { userPaused = !video.paused; if (userPaused) video.pause(); else play(); }); }
+    new IntersectionObserver((es) => { for (const e of es) { if (e.isIntersecting && !userPaused) play(); else video.pause(); } }, { threshold: 0.2 }).observe(video);
   }
 
   // ---- the orbit: the real API (white) and its twin (orange) on one orbit ----
