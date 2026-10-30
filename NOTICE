@@ -18,6 +18,14 @@ openly licensed API descriptions were used as references:
   GitHub REST API description       https://github.com/github/rest-api-description     MIT License, Copyright (c) GitHub, Inc.
   Resend OpenAPI description        https://github.com/resend/resend-openapi           MIT License, Copyright (c) Resend
   Paystack OpenAPI description      https://github.com/PaystackOSS/openapi             MIT License, Copyright (c) Paystack
+  OpenAI OpenAPI description        https://github.com/openai/openai-openapi           MIT License, Copyright (c) OpenAI
+
+The Anthropic pack is written by hand from facts in Anthropic's public API reference
+(https://docs.anthropic.com/en/api); it contains no copied documentation text.
+
+registry/official.json lists links to API descriptions that providers publish
+themselves. It contains links only, no copies; the descriptions are downloaded to
+the user's machine at runtime and keep their owners' licences, which the tool shows.
 
 API descriptions fetched at runtime (for example from the APIs.guru directory, which
 is published under CC0 1.0) are downloaded to the user's machine and are not

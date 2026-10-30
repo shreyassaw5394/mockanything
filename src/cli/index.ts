@@ -95,6 +95,14 @@ function fill(snippet: string, t: { url: string; port: number; secret: string })
   return snippet.replaceAll("{{baseUrl}}", t.url).replaceAll("{{port}}", String(t.port)).replaceAll("{{host}}", "localhost").replaceAll("{{secret}}", t.secret);
 }
 
+/** The downloaded spec stays under its owner's licence: say which, and flag restrictive or unstated ones. */
+function specLicenseLine(license: string | undefined): string {
+  const l = (license ?? "").trim();
+  const text = l ? `${l} (the API description's own licence)` : "not stated by the provider";
+  const flag = !l || /NC|non-?commercial|AGPL|GPL|NOASSERTION|proprietary/i.test(l);
+  return `  Spec licence    ${flag ? c.yellow(`${text} · check it fits your use`) : c.dim(text)}`;
+}
+
 function genericSnippet(t: RunningTwin): string {
   return `Point your HTTP client or SDK's base URL at ${t.url}${t.twin.def.basePath ?? ""}`;
 }
@@ -145,6 +153,7 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
       ...(t.twin.listEndpoints().map((e) => `  Webhooks →      ${e.url}`)),
       `  Chaos           ${chaos ? c.yellow(`on (${chaos.modes.join(", ")}, ${Math.round(chaos.rate * 100)}%, seed ${chaos.seed})`) : "off"}`,
       `  Source          ${r.detail}`,
+      ...(r.origin === "official" || r.origin === "apis-guru" || r.origin === "openapi-url" ? [specLicenseLine(r.specLicense ?? r.def.source?.license)] : []),
       t.state ? `  Saved state     ${t.state.path} ${c.dim(t.state.restored ? `(${t.state.restored} objects restored${t.state.dropped ? `, ${t.state.dropped} dropped` : ""})` : "(new)")}` : "",
     ].filter(Boolean);
     if (t.state && values.state && insideGitRepo(t.state.path)) lines.push(c.yellow(`  ! ${t.state.path} is inside a git repo. Add it to .gitignore so test data isn't committed.`));

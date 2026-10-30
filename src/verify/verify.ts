@@ -275,7 +275,8 @@ export async function runVerify(def: TwinDefinition, suite: Suite, opts: VerifyO
         const init = { method: st.method.toUpperCase(), headers, body };
         let status: number, text: string, retryAfter: string | null;
         if (t.real) {
-          const r = await safeFetch(url, init, { maxBytes: 5 * 1024 * 1024, timeoutMs: opts.fetchTimeoutMs ?? 20_000 });
+          // no redirects: the key is only ever sent to the host you named
+          const r = await safeFetch(url, init, { maxBytes: 5 * 1024 * 1024, timeoutMs: opts.fetchTimeoutMs ?? 20_000, maxRedirects: 0, httpsOnly: true });
           status = r.status; text = await r.text(); retryAfter = r.headers.get("retry-after") as string | null;
         } else {
           const r = await fetch(url, { ...init, signal: AbortSignal.timeout(opts.fetchTimeoutMs ?? 20_000) });

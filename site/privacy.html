@@ -19,7 +19,7 @@
 </header>
 <main class="doc">
   <h1>Privacy</h1>
-  <p class="updated">Last updated 28 October 2026</p>
+  <p class="updated">Last updated 29 October 2026</p>
 
   <p>Mock Anything is a free, non-commercial passion project run by Shreyas Sawant, an independent developer. This page covers the website at mockanything.dev and the Mock Anything tool (the command-line program and MCP server). Contact: <a href="mailto:shreyassaw@gmail.com">shreyassaw@gmail.com</a>.</p>
 
@@ -43,14 +43,15 @@
   <p>Links to other sites (for example GitHub or npm) are governed by those sites' own policies once you follow them.</p>
 
   <h2>The tool</h2>
-  <p>Mock Anything runs locally. Twins keep their data in memory on your computer and forget it when they stop. Nothing you send to a twin is sent to us. The tool makes network requests only in these cases:</p>
+  <p>Mock Anything runs locally. Twins keep their data in memory on your computer and forget it when they stop, unless you turn on saving with <code>--persist</code> or <code>--state</code>: then it is written to a file on your computer that only your user account can read (by default in <code>~/.mockanything/state</code>), until you delete it. Nothing you send to a twin is sent to us. The tool makes network requests only in these cases:</p>
   <ul>
     <li><b>Installing or updating</b> it through npm (governed by npm's terms and privacy policy).</li>
-    <li><b>Looking up an API by name:</b> it downloads the public directory from api.apis.guru and then the API description from the address listed there. Those servers see your IP address. Downloads are cached in <code>~/.mockanything/cache</code>.</li>
-    <li><b>Loading a URL you give it</b> (an API description, or a documentation page when your agent uses <code>twin_from_docs</code>). That server sees your IP address.</li>
+    <li><b>Looking up an API by name:</b> for popular APIs it downloads the provider's own published API description from the provider's site or code repository (for example GitHub); for others it downloads the public directory from api.apis.guru and then the API description from the address listed there. Those servers see your IP address. Downloads are cached in <code>~/.mockanything/cache</code>.</li>
+    <li><b>Loading a URL you give it</b> (an API description, or a documentation page when you or your agent use <code>mockanything docs</code> or <code>twin_from_docs</code>). That server sees your IP address.</li>
+    <li><b>Running <code>mockanything verify</code>:</b> it sends test requests to the real provider's API with the test key you supply, under your own agreement with that provider. The provider sees those requests and your IP address. Nothing is sent to us, and the report it writes holds field names and codes only.</li>
     <li><b>Webhooks</b> you configure, which go to addresses on your own machine unless you allow other hosts.</li>
   </ul>
-  <p>The tool masks keys and card numbers in its local logs and dashboard. Please use test data only.</p>
+  <p>The tool masks keys and card numbers in its local logs and dashboard. HAR recordings you load are read on your computer only; the twin keeps field names and shapes from them, not header values or text. Running twins write their address and a local access token to <code>~/.mockanything/running</code>, readable only by your user account, and remove it when they stop. Please use test data only.</p>
 
   <h2>International transfers</h2>
   <p>Vercel may process website request data in the United States and other countries, under its standard contractual protections (including the EU–US Data Privacy Framework and Standard Contractual Clauses where applicable).</p>
@@ -76,7 +77,7 @@
       <a href="/license.txt">Licence</a>
       <a href="/notice.txt">Notices</a>
     </nav>
-    <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub and other names are trademarks of their respective owners, used only to describe compatibility.</p>
+    <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub, OpenAI, Anthropic, Claude and other names are trademarks of their respective owners, used only to describe compatibility.</p>
   </div>
 </footer>
 </body>

@@ -16,6 +16,8 @@ export interface Resolved {
   origin: "pack" | "definition" | "openapi-file" | "openapi-url" | "apis-guru" | "har" | "official";
   detail: string;
   alternatives?: string[];
+  /** Licence of the downloaded API description, when known ("" = the provider states none). */
+  specLicense?: string;
 }
 
 export interface OfficialSpec { name: string; title: string; url: string; source: string; license?: string; aliases?: string[]; notes?: string }
@@ -52,9 +54,9 @@ const DIRECTORY = "https://api.apis.guru/v2/list.json";
 const DAY = 24 * 60 * 60 * 1000;
 
 /** Fetch text from a URL. Public URLs go through the guarded fetch; URLs on this machine are allowed directly. */
-export async function fetchText(url: string, maxBytes = MAX_SPEC): Promise<{ text: string; contentType: string; finalUrl: string }> {
+export async function fetchText(url: string, maxBytes = MAX_SPEC, opts: { allowLocal?: boolean } = {}): Promise<{ text: string; contentType: string; finalUrl: string }> {
   const headers = { "user-agent": "mockanything (+https://mockanything.dev)", accept: "application/json, application/yaml, text/yaml, text/html;q=0.8, */*;q=0.5" };
-  if (isLoopbackUrl(url)) {
+  if (isLoopbackUrl(url) && opts.allowLocal !== false) {
     const res = await fetch(url, { headers, signal: AbortSignal.timeout(15_000), redirect: "manual" });
     if (!res.ok) throw new Error(`${url} returned HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
@@ -149,7 +151,7 @@ export async function resolveSource(input: string): Promise<Resolved> {
     try {
       const text = await cachedText(known.url, 7 * DAY);
       const r = fromDocument(parseDocument(text), known.url, "official");
-      return { ...r, detail: `${known.title} (the provider's published spec: ${known.source})` };
+      return { ...r, detail: `${known.title} (the provider's published spec: ${known.source})`, specLicense: known.license ?? r.def.source?.license ?? "" };
     } catch (e) {
       // the official source is unreachable or changed shape: fall back to the directory copy
       try { const r = await resolveByName(trimmed); return { ...r, detail: `${r.detail}; the official spec failed: ${(e as Error).message.slice(0, 120)}` }; }

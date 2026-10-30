@@ -3,8 +3,7 @@ name: Fidelity
 # Measures how closely the built-in twins match each provider's sandbox, using test-mode keys stored as repository
 # secrets. Runs weekly and on demand. Reports are uploaded as artifacts; nothing is committed automatically.
 
-permissions:
-  contents: read
+permissions: {}
 
 on:
   schedule:
@@ -16,36 +15,62 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify:
+  stripe:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-          - twin: stripe
-            secret: STRIPE_TEST_KEY
-          - twin: paystack
-            secret: PAYSTACK_TEST_KEY
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - run: npm install -g pnpm@9
+          package-manager-cache: false
+      - run: npm install -g pnpm@9.15.9
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - name: Verify ${{ matrix.twin }}
+      - name: Verify stripe
         env:
-          MOCKANYTHING_SANDBOX_KEY: ${{ secrets[matrix.secret] }}
+          MOCKANYTHING_SANDBOX_KEY: ${{ secrets.STRIPE_TEST_KEY }}
         run: |
-          if [ -z "$MOCKANYTHING_SANDBOX_KEY" ]; then echo "No ${{ matrix.secret }} secret; skipping."; exit 0; fi
-          mkdir -p reports
-          node dist/cli.js verify ${{ matrix.twin }} --out reports/${{ matrix.twin }}.json --out reports/${{ matrix.twin }}.md
-      - uses: actions/upload-artifact@v4
+          if [ -z "$MOCKANYTHING_SANDBOX_KEY" ]; then echo "No STRIPE_TEST_KEY secret; skipping."; exit 0; fi
+          mkdir -p reports && node dist/cli.js verify stripe --out reports/stripe.json --out reports/stripe.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: fidelity-${{ matrix.twin }}
+          name: fidelity-stripe
+          path: reports/
+          if-no-files-found: ignore
+
+  paystack:
+    needs: stripe
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - run: npm install -g pnpm@9.15.9
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Verify paystack
+        env:
+          MOCKANYTHING_SANDBOX_KEY: ${{ secrets.PAYSTACK_TEST_KEY }}
+        run: |
+          if [ -z "$MOCKANYTHING_SANDBOX_KEY" ]; then echo "No PAYSTACK_TEST_KEY secret; skipping."; exit 0; fi
+          mkdir -p reports && node dist/cli.js verify paystack --out reports/paystack.json --out reports/paystack.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: fidelity-paystack
           path: reports/
           if-no-files-found: ignore

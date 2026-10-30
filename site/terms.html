@@ -19,7 +19,7 @@
 </header>
 <main class="doc">
   <h1>Terms</h1>
-  <p class="updated">Last updated 28 October 2026</p>
+  <p class="updated">Last updated 29 October 2026</p>
 
   <h2>Agreement</h2>
   <p>These terms cover the website at mockanything.dev and the Mock Anything software. By using either, you agree to them. Mock Anything is a free, non-commercial passion project run by Shreyas Sawant, an independent developer.</p>
@@ -30,6 +30,10 @@
   <h2>What it is, and isn't</h2>
   <p>Mock Anything simulates APIs on your computer for development and testing. Simulated responses are approximations built from public information and may differ from the real services. It does not process payments, send messages or emails, or connect to any provider unless you explicitly ask it to fetch a document. Before relying on an integration in production, test it against the provider's own sandbox.</p>
 
+  <h2>API descriptions, recordings and checks</h2>
+  <p>When the tool downloads an API description (from a provider's own site or repository, or from the public APIs.guru directory), that description stays its owner's and remains under its owner's licence; some are licensed for non-commercial use only, and the tool shows the licence when it knows it. It is downloaded to your computer for you and is not redistributed by us. Check that the licence fits your use.</p>
+  <p><code>mockanything verify</code> sends requests to the real provider's API with the test key you supply. Those requests are made by you, under your agreement with that provider, so its terms apply; use a test (sandbox) account. The tool refuses live keys and limits how often and how many requests it makes, but you are responsible for your own account.</p>
+  <p>Twins of AI model APIs (such as the OpenAI and Anthropic twins) return fixed, canned text marked “[mock]”. No model runs, and nothing they return is real model output.</p>
   <h2>Acceptable use</h2>
   <p>Do not use Mock Anything, or anything it produces, to:</p>
   <ul>
@@ -67,7 +71,7 @@
       <a href="/license.txt">Licence</a>
       <a href="/notice.txt">Notices</a>
     </nav>
-    <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub and other names are trademarks of their respective owners, used only to describe compatibility.</p>
+    <p class="fine">Mock Anything is a free, non-commercial passion project by an independent developer, part of Ship at Midnight. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub, OpenAI, Anthropic, Claude and other names are trademarks of their respective owners, used only to describe compatibility.</p>
   </div>
 </footer>
 </body>

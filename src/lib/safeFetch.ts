@@ -118,18 +118,30 @@ async function readCapped(res: UndiciResponse, maxBytes: number): Promise<string
 }
 
 /** fetch() for untrusted URLs. Same call shape as fetch for the parts we use. */
+const CREDENTIAL_HEADERS = new Set(["authorization", "cookie", "proxy-authorization", "x-api-key", "api-key", "apikey", "x-auth-token", "x-access-token"]);
+export function withoutCredentials(h: UndiciInit["headers"]): Record<string, string> {
+  const out: Record<string, string> = {};
+  const entries: [string, string][] = !h ? [] : h instanceof Headers ? [...h.entries()] : Array.isArray(h) ? (h as [string, string][]) : Object.entries(h as Record<string, string>);
+  for (const [k, v] of entries) if (!CREDENTIAL_HEADERS.has(k.toLowerCase())) out[k] = v;
+  return out;
+}
+
 export async function safeFetch(url: string | URL, init: UndiciInit & { signal?: AbortSignal } = {}, opts: SafeFetchOptions = {}): Promise<SafeResponse> {
   const { maxRedirects = 5, maxBytes = 5 * 1024 * 1024, timeoutMs = 15_000, httpsOnly = false } = opts;
   const signal = init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
   let current = assertPublicUrl(url, { httpsOnly });
   let method = (init.method || "GET").toUpperCase();
   let body = init.body;
+  let headers = init.headers;
   for (let hop = 0; ; hop++) {
-    const res = await undiciFetch(current, { ...init, method, body, redirect: "manual", signal, dispatcher });
+    const res = await undiciFetch(current, { ...init, headers, method, body, redirect: "manual", signal, dispatcher });
     if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
       await res.body?.cancel();
       if (hop >= maxRedirects) throw new BlockedUrlError("Too many redirects");
-      current = assertPublicUrl(new URL(res.headers.get("location")!, current), { httpsOnly });
+      const next = assertPublicUrl(new URL(res.headers.get("location")!, current), { httpsOnly });
+      // credentials never follow a redirect to another origin
+      if (next.origin !== current.origin) headers = withoutCredentials(headers);
+      current = next;
       if (res.status === 303 || ((res.status === 301 || res.status === 302) && method === "POST")) { method = "GET"; body = undefined; }
       continue;
     }

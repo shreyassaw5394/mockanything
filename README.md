@@ -81,7 +81,7 @@ Measured on 2026-10-29 with `scripts/coverage.ts`, which builds a twin from each
 
 The calls that don't succeed get proper errors, mostly "not found" for an id that was never created, or a missing parent object. Starting and answering is not the same as matching the real API; `verify` measures that.
 
-Popular APIs with a current official spec (OpenAI, Square, PayPal, Adyen, Discord, Jira, Cloudflare, Vercel, Supabase, Clerk, Hugging Face and more) are fetched from the provider's own source rather than the directory, which is often out of date. Run `mockanything list` for all of them.
+Popular APIs whose providers publish a current spec (Square, PayPal, Adyen, Discord, Jira, Cloudflare, Vercel, Supabase, Clerk, Hugging Face and more) are fetched from the provider's own published source rather than the directory, which is often out of date. Run `mockanything list` for all of them.
 
 Twins built straight from the public Stripe, Twilio, GitHub and Resend specs, with no hand-tuning, pass the official SDKs' basic create/read/update/list/delete flows (`scripts/conformance.ts`).
 
@@ -187,7 +187,7 @@ npx mockanything verify ./openapi.yaml --against https://api.example.com --key .
   Fidelity <score>  status · fields · types · ids and codes
 ```
 
-It only runs with test-mode keys (live keys are refused), makes about one call a second with a hard cap per run, and creates a few test objects in your sandbox (the Stripe suite deletes its customer afterwards). The report lists field paths and code values only, never your data, so it is safe to share. Built-in suites: `stripe`, `paystack`; write your own for any twin (see `packs/verify/`). Webhooks are not compared yet.
+It only runs with test-mode keys (live keys are refused), makes about one call a second with a hard cap per run, and creates a few test objects in your sandbox (the Stripe suite deletes its customer afterwards). The report lists field paths, types and code values only, never response data or your key. Built-in suites: `stripe`, `paystack`; write your own for any twin (see `packs/verify/`). Webhooks are not compared yet.
 
 `mockanything list` shows each pack's published score and the date it was measured. Use twins to build and test quickly; run your final checks against the provider's sandbox before you ship.
 
@@ -203,4 +203,4 @@ Packs for more APIs are very welcome, especially regional ones. Read [CONTRIBUTI
 
 Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-Mock Anything is a free, non-commercial passion project by an independent developer. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub and other names are trademarks of their respective owners and are used only to describe compatibility.
+Mock Anything is a free, non-commercial passion project by an independent developer. It is not affiliated with, endorsed by, or sponsored by any company whose API it simulates. Stripe, Paystack, Twilio, Resend, GitHub, OpenAI, Anthropic, Claude and other names are trademarks of their respective owners and are used only to describe compatibility.
