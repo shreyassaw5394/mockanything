@@ -1,0 +1,51 @@
+name: Fidelity
+
+# Measures how closely the built-in twins match each provider's sandbox, using test-mode keys stored as repository
+# secrets. Runs weekly and on demand. Reports are uploaded as artifacts; nothing is committed automatically.
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: fidelity
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - twin: stripe
+            secret: STRIPE_TEST_KEY
+          - twin: paystack
+            secret: PAYSTACK_TEST_KEY
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g pnpm@9
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Verify ${{ matrix.twin }}
+        env:
+          MOCKANYTHING_SANDBOX_KEY: ${{ secrets[matrix.secret] }}
+        run: |
+          if [ -z "$MOCKANYTHING_SANDBOX_KEY" ]; then echo "No ${{ matrix.secret }} secret; skipping."; exit 0; fi
+          mkdir -p reports
+          node dist/cli.js verify ${{ matrix.twin }} --out reports/${{ matrix.twin }}.json --out reports/${{ matrix.twin }}.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fidelity-${{ matrix.twin }}
+          path: reports/
+          if-no-files-found: ignore

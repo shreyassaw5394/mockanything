@@ -63,6 +63,8 @@ export interface Conventions {
   listStyle?: ListStyle;
   /** Error body. Placeholders: $status $message $code $type $param plus any `extra` keys. */
   error?: Template;
+  /** Leave fields that came out null out of error bodies (Stripe and Paystack omit them). */
+  errorDropNulls?: boolean;
   /** Errors used by the engine itself. */
   errors?: {
     notFound?: ErrorSpec;

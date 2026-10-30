@@ -1,0 +1,14 @@
+{
+  "name": "mockanything",
+  "version": "0.2.0",
+  "description": "Mock Anything: local, stateful twins of any API so your agent can build and test integrations without real keys, real money or real messages.",
+  "author": { "name": "Shreyas Sawant", "url": "https://github.com/shreyassaw5394" },
+  "homepage": "https://mockanything.dev",
+  "repository": "https://github.com/shreyassaw5394/mockanything",
+  "license": "Apache-2.0",
+  "keywords": ["mock", "api", "testing", "stripe", "webhooks", "openapi", "mcp"],
+  "mcpServers": {
+    "mockanything": { "command": "npx", "args": ["-y", "mockanything@latest", "mcp"] }
+  },
+  "skills": "./skills"
+}

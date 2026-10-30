@@ -1,0 +1,43 @@
+name: Release
+
+# Tag v<version> (matching package.json) to publish to npm with provenance and create the GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g pnpm@9
+      - run: pnpm install --frozen-lockfile
+      - name: Tag matches every version file
+        run: |
+          V=$(node -p "require('./package.json').version")
+          [ "refs/tags/v$V" = "$GITHUB_REF" ] || { echo "::error::tag $GITHUB_REF != v$V"; exit 1; }
+          for f in server.json .claude-plugin/plugin.json; do
+            FV=$(node -p "require('./$f').version")
+            [ "$FV" = "$V" ] || { echo "::error::$f is $FV, package.json is $V"; exit 1; }
+          done
+          SV=$(node -p "require('./server.json').packages[0].version")
+          [ "$SV" = "$V" ] || { echo "::error::server.json package version is $SV"; exit 1; }
+          grep -q "export const VERSION = \"$V\"" src/version.ts || { echo "::error::src/version.ts does not say $V"; exit 1; }
+      - run: pnpm run check
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "Mock Anything $GITHUB_REF_NAME" --notes-file CHANGELOG.md --verify-tag

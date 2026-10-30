@@ -84,6 +84,11 @@ export class IdFactory {
     }
   }
   reset(): void { this.counters.clear(); }
+  dump(): Record<string, number> { return Object.fromEntries(this.counters); }
+  load(c: Record<string, number>): void {
+    this.counters.clear();
+    for (const [k, v] of Object.entries(c)) if (Number.isFinite(v)) this.counters.set(k, v);
+  }
 }
 
 // ---- type coercion for form-encoded bodies ----

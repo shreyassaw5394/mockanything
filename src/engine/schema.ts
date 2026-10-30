@@ -93,7 +93,7 @@ export const twinSchema = z.object({
     }).strict().optional(),
     error: json.optional(), errors: errors.optional(), idempotencyHeader: str(100).optional(), bodyMap: z.record(str(200), str(200)).optional(),
     ignore: z.array(str(200)).max(200).optional(), createStatus: z.number().int().min(100).max(599).optional(),
-    deleteStatus: z.number().int().min(100).max(599).optional(), deleteBody: json.optional(), expandParam: str(100).optional(),
+    deleteStatus: z.number().int().min(100).max(599).optional(), deleteBody: json.optional(), expandParam: str(100).optional(), errorDropNulls: z.boolean().optional(),
   }).strict().optional(),
   resources: z.record(z.string().max(200), resource).refine((r) => Object.keys(r).length <= 2000, "too many resources"),
   operations: z.array(operation).max(10_000),

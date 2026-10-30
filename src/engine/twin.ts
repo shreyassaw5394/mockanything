@@ -56,6 +56,19 @@ export interface LoggedDelivery {
 
 interface Endpoint { id: string; url: string; events: string[]; secret: string }
 
+export interface SavedState {
+  mockanything: 1;
+  twin: string;
+  savedAt: string;
+  store: Record<string, Record<string, Json>[]>;
+  fallback?: Record<string, Record<string, Json>[]>;
+  ids?: Record<string, number>;
+  seqs?: Record<string, number>;
+  clockOffsetMs: number;
+  webhookSecret?: string;
+  endpoints?: Endpoint[];
+}
+
 class TwinError extends Error {
   constructor(readonly spec: ErrorSpec, readonly vars: Record<string, Json> = {}) { super(spec.message); }
 }
@@ -195,6 +208,54 @@ export class Twin {
   }
 
   close(): void { for (const t of this.timers) clearTimeout(t); this.timers.clear(); }
+
+  /** Everything needed to pick up where the twin left off: objects, id counters, clock, webhook endpoints. */
+  exportState(): SavedState {
+    const store: Record<string, Record<string, Json>[]> = {};
+    for (const [r, m] of this.store) store[r] = [...m.values()];
+    const fallback: Record<string, Record<string, Json>[]> = {};
+    for (const [p, m] of this.fallback) fallback[p] = [...m.values()];
+    return {
+      mockanything: 1, twin: this.def.id, savedAt: new Date().toISOString(),
+      store, fallback, ids: this.ids.dump(), seqs: Object.fromEntries(this.seqs), clockOffsetMs: this.clockOffsetMs,
+      webhookSecret: this.webhookSecret, endpoints: this.endpoints.map((e) => ({ ...e })),
+    };
+  }
+
+  /** Restore a saved state. Objects for resources this twin no longer has are dropped (and counted). */
+  importState(s: SavedState): { objects: number; dropped: number } {
+    if (!s || s.mockanything !== 1) throw new Error("Not a Mock Anything state file");
+    if (s.twin !== this.def.id) throw new Error(`This state was saved by the "${s.twin}" twin, not "${this.def.id}". Use a different --state file.`);
+    let objects = 0, dropped = 0;
+    for (const m of this.store.values()) m.clear();
+    for (const [r, list] of Object.entries(s.store ?? {})) {
+      const m = this.store.get(r);
+      if (!m || !Array.isArray(list)) { dropped += Array.isArray(list) ? list.length : 0; continue; }
+      const idf = this.idField(r);
+      for (const o of list) {
+        if (!o || typeof o !== "object" || o[idf] === undefined || o[idf] === null) { dropped++; continue; }
+        m.set(String(o[idf]), o); objects++;
+      }
+    }
+    this.fallback.clear();
+    for (const [p, list] of Object.entries(s.fallback ?? {})) {
+      if (!Array.isArray(list)) continue;
+      const m = new Map<string, Record<string, Json>>();
+      for (const o of list) if (o && typeof o === "object" && o.id !== undefined) { m.set(String(o.id), o); objects++; }
+      this.fallback.set(p, m);
+    }
+    this.ids.load(s.ids ?? {});
+    this.seqs = new Map(Object.entries(s.seqs ?? {}).filter(([, v]) => Number.isFinite(v)));
+    this.clockOffsetMs = Number.isFinite(s.clockOffsetMs) ? s.clockOffsetMs : 0;
+    for (const e of s.endpoints ?? []) {
+      if (this.endpoints.some((x) => x.url === e.url)) continue;
+      if (e && typeof e.url === "string" && isLoopbackUrl(e.url, this.opts.allowWebhookHosts)) {
+        this.endpoints.push({ id: String(e.id), url: e.url, events: Array.isArray(e.events) ? e.events.map(String) : ["*"], secret: String(e.secret ?? this.webhookSecret) });
+      }
+    }
+    this.notify("state", null);
+    return { objects, dropped };
+  }
 
   /** Emit an arbitrary event (MCP/dashboard "send test webhook"). */
   async emitManual(type: string, resource?: string, id?: string): Promise<void> {
@@ -1097,6 +1158,7 @@ export class Twin {
       for (const k of Object.keys(spec.extra)) host[k] = full[`$${k}`] as Json;
       body = plain(body);
     }
+    if (this.def.conventions?.errorDropNulls) body = dropNulls(body);
     const status = Number(full.$status) || spec.status;
     return this.json(status, body);
   }
@@ -1160,3 +1222,11 @@ function lower(h: Record<string, string>): Record<string, string> {
 }
 
 function sleep(ms: number): Promise<void> { return new Promise((r) => { const t = setTimeout(r, ms); t.unref?.(); }); }
+
+/** Remove null fields from objects (two levels deep: error bodies are shallow). */
+function dropNulls(v: Json, depth = 0): Json {
+  if (!v || typeof v !== "object" || Array.isArray(v) || depth > 3) return v;
+  const out: Record<string, Json> = {};
+  for (const [k, x] of Object.entries(v)) if (x !== null && x !== undefined) out[k] = dropNulls(x, depth + 1);
+  return out;
+}

@@ -32,10 +32,11 @@ conventions:
     data: "{{$items}}"
     meta: { total: "{{$total}}", skipped: "{{$skipped}}", perPage: "{{$limit}}", page: "{{$page}}", pageCount: "{{$pageCount}}" }
   listStyle: { kind: page, limitParam: perPage, pageParam: page, pageBase: 1, defaultLimit: 50, maxLimit: 100, order: desc }
-  error: { status: false, message: "{{$message}}", type: "{{$type}}", code: "{{$code}}" }
+  error: { status: false, message: "{{$message}}", meta: "{{$meta}}", type: "{{$type}}", code: "{{$code}}" }
+  errorDropNulls: true
   errors:
     notFound: { status: 404, message: "{{$resource}} not found", type: validation_error, code: not_found }
-    unauthorized: { status: 401, message: "Invalid key", type: validation_error, code: invalid_key }
+    unauthorized: { status: 401, message: "No Authorization Header was found", type: validation_error, code: invalid_Key, extra: { meta: { nextStep: "Ensure that you provide the correct authorization key for the request" } } }
     liveKey: { status: 401, message: "This twin refuses live keys. Use a test key such as sk_test_mockanything.", type: validation_error, code: live_key_refused }
     missingParam: { status: 400, message: "{{$param}} is required", type: validation_error, code: missing_params }
     invalidState: { status: 400, message: "This {{$resource}} cannot be {{$transition}}ed because its status is {{$state}}", type: validation_error, code: invalid_state }

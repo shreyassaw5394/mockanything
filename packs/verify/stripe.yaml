@@ -1,0 +1,97 @@
+# Fidelity suite for the Stripe twin. Runs against Stripe's test mode with your own test key (sk_test_… or rk_test_…).
+# Creates a test customer, test PaymentIntents and a test refund in your sandbox, then deletes the customer.
+schema: 1
+twin: stripe
+title: Stripe payments flow
+realBaseUrl: https://api.stripe.com
+testKey: "^(sk|rk)_test_"
+twinKey: sk_test_mockanything
+encoding: form
+ignore:
+  # account- and version-specific settings that a twin can't know
+  - "*.request_three_d_secure"
+  - "invoice_settings.*"
+  - "*.payment_method_options.*"
+  - "payment_method_configuration_details.*"
+  - "*.payment_method_configuration_details"
+steps:
+  - id: customer_create
+    name: Create a customer
+    method: POST
+    path: /v1/customers
+    body: { email: verify@example.com, name: Mock Anything verify, metadata: { source: mockanything-verify } }
+    save: { customer: id }
+  - id: customer_read
+    name: Retrieve the customer
+    method: GET
+    path: "/v1/customers/{{customer}}"
+  - id: customer_update
+    name: Update the customer
+    method: POST
+    path: "/v1/customers/{{customer}}"
+    body: { metadata: { step: updated } }
+  - id: customer_list
+    name: List customers
+    method: GET
+    path: /v1/customers
+    query: { limit: 3 }
+  - id: pi_create
+    name: Create a PaymentIntent
+    method: POST
+    path: /v1/payment_intents
+    body: { amount: 2000, currency: usd, customer: "{{customer}}", payment_method_types: [card] }
+    save: { pi: id }
+  - id: pi_confirm
+    name: Confirm with a test card
+    method: POST
+    path: "/v1/payment_intents/{{pi}}/confirm"
+    body: { payment_method: pm_card_visa }
+  - id: pi_read
+    name: Retrieve the PaymentIntent
+    method: GET
+    path: "/v1/payment_intents/{{pi}}"
+  - id: refund_create
+    name: Refund it
+    method: POST
+    path: /v1/refunds
+    body: { payment_intent: "{{pi}}" }
+    save: { refund: id }
+  - id: refund_read
+    name: Retrieve the refund
+    method: GET
+    path: "/v1/refunds/{{refund}}"
+  - id: refund_again
+    name: Refund it again (error)
+    method: POST
+    path: /v1/refunds
+    body: { payment_intent: "{{pi}}" }
+  - id: declined
+    name: Declined card (error)
+    method: POST
+    path: /v1/payment_intents
+    body: { amount: 2000, currency: usd, payment_method_types: [card], payment_method: pm_card_chargeDeclined, confirm: true }
+  - id: pi_cancel
+    name: Create and cancel a PaymentIntent
+    method: POST
+    path: /v1/payment_intents
+    body: { amount: 500, currency: usd, payment_method_types: [card] }
+    save: { pi2: id }
+  - id: pi_cancelled
+    name: Cancel it
+    method: POST
+    path: "/v1/payment_intents/{{pi2}}/cancel"
+  - id: missing
+    name: Retrieve a customer that doesn't exist (error)
+    method: GET
+    path: /v1/customers/cus_mockanythingmissing
+  - id: no_key
+    name: Call without a key (error)
+    method: GET
+    path: /v1/customers
+    noAuth: true
+  - id: customer_delete
+    name: Delete the customer
+    method: DELETE
+    path: "/v1/customers/{{customer}}"
+notes:
+  - "Uses payment_method_types=card so confirmations never need a redirect."

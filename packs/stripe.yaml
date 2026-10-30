@@ -34,6 +34,7 @@ conventions:
   list: { object: list, data: "{{$items}}", has_more: "{{$hasMore}}", url: "{{$url}}" }
   listStyle: { kind: cursor, limitParam: limit, defaultLimit: 10, maxLimit: 100, afterParam: starting_after, beforeParam: ending_before, order: desc }
   error: { error: { message: "{{$message}}", type: "{{$type}}", code: "{{$code}}", param: "{{$param}}", doc_url: "{{$docUrl}}" } }
+  errorDropNulls: true
   deleteBody: { id: "{{obj.id}}", object: "{{obj.object}}", deleted: true }
   errors:
     notFound: { status: 404, message: "No such {{$resource}}: '{{$id}}'", code: resource_missing, type: invalid_request_error, param: id }

@@ -5,6 +5,7 @@ import { serveTwin, parseChaos, type RunningTwin } from "../engine/server.js";
 import { applyOverrides, listPacks, loadDefinitionFile, parseDocument } from "../engine/load.js";
 import { resolveSource, DocsPageError, type Resolved } from "../ingest/resolve.js";
 import { VERSION } from "../version.js";
+import { defaultStatePath, insideGitRepo } from "../engine/state.js";
 
 const tty = process.stdout.isTTY;
 const c = {
@@ -23,6 +24,7 @@ Usage
   mockanything inspect <api>         show what was inferred (as an editable definition)
   mockanything validate <file>       check a twin definition
   mockanything env <api>             config snippets for pointing your app at the twin
+  mockanything verify <api>          measure how closely a twin matches the real API (your test key)
   mockanything mcp                   run the MCP server (for Claude Code, Cursor and other agents)
 
 Examples
@@ -31,6 +33,9 @@ Examples
   mockanything https://petstore3.swagger.io/api/v3/openapi.json
   mockanything slack --chaos --seed 42
   mockanything stripe --webhook http://localhost:3000/webhooks/stripe
+  mockanything stripe --persist
+  mockanything ./recording.har
+  mockanything verify stripe --key sk_test_...
 
 Options
   --port <n>                  port (default 4010; the next free one is used if busy)
@@ -40,8 +45,17 @@ Options
   --chaos[=modes]             inject failures: timeout,5xx,slow,429,dup-webhooks,out-of-order (default: all)
   --chaos-rate <0..1>         share of requests affected (default 0.15)
   --seed <n>                  make chaos repeatable
+  --persist                   keep the twin's data between restarts (~/.mockanything/state/<twin>.json)
+  --state <file>              same, in a file you choose
   --overrides <file>          YAML/JSON merged over the twin definition
-  --json                      print startup info as JSON
+  --json                      print startup info (or the verify report) as JSON
+
+Verify options
+  --key <test key>            your sandbox key (or MOCKANYTHING_SANDBOX_KEY). Live keys are refused.
+  --suite <file>              your own suite (default: the built-in one for that twin)
+  --against <url>             real API base URL (default: the suite's; required for twins without a suite)
+  --out <file>                write the report (.md or .json; repeat for both)
+  --pace <ms>                 time between calls to the real API (default 1000, minimum 200)
   -h, --help / -v, --version
 
 Mock Anything is a free, non-commercial passion project. Not affiliated with any company it simulates.
@@ -80,6 +94,7 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
   });
   const basePort = values.port ? Number(values.port) : 4010;
   if (!Number.isInteger(basePort) || basePort < 0 || basePort > 65535) fail("--port must be a number between 0 and 65535");
+  const statePath = values.state ? String(values.state) : values.persist ? defaultStatePath(r.def.id) : undefined;
   let t: RunningTwin | null = null;
   let lastErr: unknown;
   for (let p = basePort; p < basePort + 20 && !t; p++) {
@@ -89,6 +104,7 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
         webhookUrls: values.webhook as string[] | undefined,
         allowWebhookHosts: values["allow-webhook-host"] as string[] | undefined,
         corsOrigins: values.cors as string[] | undefined,
+        statePath,
       });
     } catch (e) {
       lastErr = e;
@@ -98,7 +114,7 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
   if (!t) fail(`Could not start: ${(lastErr as Error)?.message ?? "no free port"}`);
 
   if (values.json) {
-    process.stdout.write(JSON.stringify({ id: r.def.id, title: r.def.title, origin: r.origin, url: t.url, dashboard: t.dashboardUrl, webhookSecret: t.twin.webhookSecret, token: t.token }) + "\n");
+    process.stdout.write(JSON.stringify({ id: r.def.id, title: r.def.title, origin: r.origin, url: t.url, dashboard: t.dashboardUrl, webhookSecret: t.twin.webhookSecret, token: t.token, state: t.state ?? null }) + "\n");
   } else {
     const label = r.origin === "pack" ? "curated pack" : r.report ? "inferred" : "definition";
     const lines = [
@@ -111,7 +127,9 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
       ...(t.twin.listEndpoints().map((e) => `  Webhooks →      ${e.url}`)),
       `  Chaos           ${chaos ? c.yellow(`on (${chaos.modes.join(", ")}, ${Math.round(chaos.rate * 100)}%, seed ${chaos.seed})`) : "off"}`,
       `  Source          ${r.detail}`,
+      t.state ? `  Saved state     ${t.state.path} ${c.dim(t.state.restored ? `(${t.state.restored} objects restored${t.state.dropped ? `, ${t.state.dropped} dropped` : ""})` : "(new)")}` : "",
     ].filter(Boolean);
+    if (t.state && values.state && insideGitRepo(t.state.path)) lines.push(c.yellow(`  ! ${t.state.path} is inside a git repo. Add it to .gitignore so test data isn't committed.`));
     if (r.report) lines.push(`  Inferred        ${r.report.resources.length} resources, ${r.report.operations.total} operations · ${c.dim("mockanything inspect " + source + " to see and override guesses")}`);
     if (r.alternatives?.length) lines.push(`  Also available  ${c.dim(r.alternatives.slice(0, 5).join(", "))}`);
     const snip = r.def.snippets?.node ? fill(r.def.snippets.node, { url: t.url, port: t.port, secret: t.twin.webhookSecret }) : genericSnippet(t);
@@ -124,6 +142,45 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
   const stop = async () => { await t!.close(); process.exit(0); };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
+}
+
+async function verify(source: string, values: Record<string, unknown>): Promise<void> {
+  const { autoSuite, loadSuite, reportMarkdown, runVerify, builtInSuites, assertTestKey } = await import("../verify/verify.js");
+  const r = await load(source, values.overrides as string | undefined);
+  const key = String(values.key ?? process.env.MOCKANYTHING_SANDBOX_KEY ?? "");
+  let suite;
+  try {
+    if (values.suite) suite = loadSuite(String(values.suite));
+    else if (builtInSuites().includes(r.def.id)) suite = loadSuite(r.def.id);
+    else if (values.against) suite = autoSuite(r.def, String(values.against));
+    else fail(`No built-in verify suite for ${r.def.title}. Pass --against <real base URL> to check its list calls, or --suite <file>.`);
+  } catch (e) { fail((e as Error).message); }
+  if (suite.twin !== r.def.id) fail(`That suite is for the "${suite.twin}" twin, not "${r.def.id}".`);
+  try { assertTestKey(key, r.def, suite); } catch (e) { fail((e as Error).message); }
+  const against = String(values.against ?? suite.realBaseUrl);
+  if (!values.json) process.stdout.write(`${c.bold("Mock Anything verify")} · ${r.def.title} twin vs ${against}\n${c.dim(`  ${suite.steps.length} checks, about one call a second to the real API. Test-mode key only.`)}\n\n`);
+  let report;
+  try {
+    report = await runVerify(r.def, suite, {
+      key, against: values.against ? String(values.against) : undefined,
+      paceMs: values.pace ? Number(values.pace) : undefined, maxCalls: values["max-calls"] ? Number(values["max-calls"]) : undefined,
+      onStep: values.json ? undefined : (s) => {
+        const mark = s.score >= 90 ? c.green("✓") : s.score >= 60 ? c.yellow("~") : c.red("✗");
+        process.stdout.write(`  ${mark} ${s.name.padEnd(46)} ${String(s.status.twin ?? "err").padStart(3)} / ${String(s.status.real ?? "err").padStart(3)}  ${s.score}%\n`);
+      },
+    });
+  } catch (e) { fail((e as Error).message); }
+  const outs = ([] as unknown[]).concat(values.out ?? []).map(String);
+  for (const out of outs) writeFileSync(out, out.endsWith(".json") ? JSON.stringify(report, null, 2) + "\n" : reportMarkdown(report));
+  if (values.json) { process.stdout.write(JSON.stringify(report, null, 2) + "\n"); return; }
+  const s = report.summary;
+  process.stdout.write(`\n  ${c.bold(`Fidelity ${report.score}%`)}  ${c.dim(`status ${s.status}% · fields ${s.fields}% · types ${s.types}% · ids and codes ${s.values}%`)}\n`);
+  const worst = report.steps.filter((x) => x.missing.length || x.typeDiffs.length || x.valueDiffs.length).slice(0, 5);
+  for (const w of worst) {
+    const bits = [...w.valueDiffs.slice(0, 2), ...w.typeDiffs.slice(0, 2), ...(w.missing.length ? [`missing ${w.missing.slice(0, 4).join(", ")}${w.missing.length > 4 ? ` +${w.missing.length - 4}` : ""}`] : [])];
+    process.stdout.write(c.dim(`  · ${w.name}: ${bits.join("; ")}\n`));
+  }
+  process.stdout.write(`\n${outs.length ? `  Report: ${outs.join(", ")}\n` : c.dim("  Add --out report.md for the full list of differences.\n")}`);
 }
 
 async function main(): Promise<void> {
@@ -141,7 +198,14 @@ async function main(): Promise<void> {
       "chaos-rate": { type: "string" },
       seed: { type: "string" },
       overrides: { type: "string" },
-      out: { type: "string" },
+      persist: { type: "boolean" },
+      state: { type: "string" },
+      key: { type: "string" },
+      suite: { type: "string" },
+      against: { type: "string" },
+      pace: { type: "string" },
+      "max-calls": { type: "string" },
+      out: { type: "string", multiple: true },
       json: { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
@@ -158,7 +222,11 @@ async function main(): Promise<void> {
     case "list": {
       const packs = listPacks();
       process.stdout.write(`${c.bold("Built-in packs")} (hand-tuned twins)\n`);
-      for (const p of packs) process.stdout.write(`  ${p.id.padEnd(12)} ${c.dim(p.description ?? p.title)}\n`);
+      for (const p of packs) {
+        const f = p.fidelity ? c.green(`${p.fidelity.score}% match`) + c.dim(` (${p.fidelity.measuredAt.slice(0, 10)})`) : c.dim("not measured yet");
+        process.stdout.write(`  ${p.id.padEnd(12)} ${f}\n  ${"".padEnd(12)} ${c.dim(p.description ?? p.title)}\n`);
+      }
+      process.stdout.write(c.dim(`\nMatch scores come from \`mockanything verify\` against each provider's sandbox.\n`));
       process.stdout.write(`\nAny other API works too: ${c.bold("mockanything <name>")} looks it up in the public APIs.guru directory,\nor pass an OpenAPI file or URL.\n`);
       return;
     }
@@ -166,7 +234,8 @@ async function main(): Promise<void> {
       if (!arg) fail("usage: mockanything inspect <api> [--out twin.yaml]");
       const r = await load(arg, values.overrides);
       const yaml = toYaml(r.def, { lineWidth: 120 });
-      if (values.out) { writeFileSync(values.out, yaml); process.stdout.write(`Wrote ${values.out}. Edit it, then: mockanything ${values.out}\n`); }
+      const out = values.out?.[0];
+      if (out) { writeFileSync(out, yaml); process.stdout.write(`Wrote ${out}. Edit it, then: mockanything ${out}\n`); }
       else process.stdout.write(yaml);
       if (r.report) {
         process.stderr.write(`\n${c.bold("Inference report")}\n  ${r.report.resources.length} resources, ${r.report.operations.total} operations ${c.dim(JSON.stringify(r.report.operations.byAction))}\n  auth ${r.report.auth} · lists ${r.report.listStyle} · ${r.report.webhooks} webhook bindings\n`);
@@ -191,6 +260,11 @@ async function main(): Promise<void> {
       const snippets = r.def.snippets ?? {};
       if (!Object.keys(snippets).length) { process.stdout.write(`Point your HTTP client or SDK's base URL at ${t.url}${r.def.basePath ?? ""}\n`); return; }
       for (const [lang, s] of Object.entries(snippets)) process.stdout.write(`${c.bold(lang)}\n${fill(s, t)}\n`);
+      return;
+    }
+    case "verify": {
+      if (!arg) fail("usage: mockanything verify <api> --key <test key> [--suite file] [--against url] [--out report.md]");
+      await verify(arg, values as Record<string, unknown>);
       return;
     }
     case "mcp": {

@@ -28,14 +28,27 @@ export function parseDocument(text: string): unknown {
   return parseYaml(text, { schema: "core", customTags: [], maxAliasCount: 200, uniqueKeys: true, prettyErrors: true });
 }
 
-export function listPacks(): { id: string; title: string; description?: string }[] {
+export interface PackFidelity { score: number; measuredAt: string; against: string }
+
+/** Published fidelity score for a pack (packs/fidelity/<id>.json, written by `mockanything verify --out`). */
+export function packFidelity(id: string): PackFidelity | null {
+  const p = join(packsDir(), "fidelity", `${id}.json`);
+  if (!existsSync(p)) return null;
+  try {
+    const r = JSON.parse(readFileSync(p, "utf8")) as Record<string, unknown>;
+    if (typeof r.score !== "number" || typeof r.measuredAt !== "string") return null;
+    return { score: r.score, measuredAt: r.measuredAt, against: String(r.against ?? "") };
+  } catch { return null; }
+}
+
+export function listPacks(): { id: string; title: string; description?: string; fidelity?: PackFidelity | null }[] {
   const dir = packsDir();
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((f) => /\.(ya?ml|json)$/.test(f))
     .map((f) => {
       const def = loadDefinitionFile(join(dir, f));
-      return { id: def.id, title: def.title, description: def.description };
+      return { id: def.id, title: def.title, description: def.description, fidelity: packFidelity(def.id) };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
 }

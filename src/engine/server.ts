@@ -6,6 +6,7 @@ import type { TwinDefinition } from "./types.js";
 import { isLocalHost, isLocalOrigin } from "../lib/localOnly.js";
 import { dashboardHtml } from "../dashboard/page.js";
 import { checkoutPage, donePage } from "../dashboard/checkout.js";
+import { readState, writeState } from "./state.js";
 
 export interface ServeOptions {
   port?: number;
@@ -17,6 +18,8 @@ export interface ServeOptions {
   webhookSecret?: string;
   timeoutMs?: number;
   autoScale?: number;
+  /** Keep the twin's objects in this file: loaded at start, saved after changes and on close. */
+  statePath?: string;
 }
 
 export interface RunningTwin {
@@ -25,6 +28,8 @@ export interface RunningTwin {
   port: number;
   token: string;
   dashboardUrl: string;
+  /** Set when state is saved to a file. */
+  state?: { path: string; restored: number; dropped: number; savedAt?: string };
   close(): Promise<void>;
 }
 
@@ -199,7 +204,7 @@ export async function serveTwin(def: TwinDefinition, opts: ServeOptions = {}): P
     return {
       id: twin.def.id, title: twin.def.title, description: twin.def.description, source: twin.def.source, inferred: !!twin.def.inferred,
       baseUrl: running.url + (twin.def.basePath ?? ""), webhookSecret: twin.webhookSecret, endpoints: twin.listEndpoints(), scenarios: twin.scenarioNames(),
-      chaos: twin.chaos, warnings: twin.warnings, notes: twin.def.notes ?? [],
+      chaos: twin.chaos, warnings: twin.warnings, notes: twin.def.notes ?? [], state: running.state ?? null,
       resources: Object.keys(twin.def.resources), operations: twin.def.operations.map((o) => `${o.method.toUpperCase()} ${twin.def.basePath ?? ""}${o.path}`),
     };
   }
@@ -210,19 +215,40 @@ export async function serveTwin(def: TwinDefinition, opts: ServeOptions = {}): P
   });
   const port = (server.address() as AddressInfo).port;
   const url = `http://localhost:${port}`;
+  let saved: ReturnType<typeof readState> = null;
+  try { saved = opts.statePath ? readState(opts.statePath) : null; }
+  catch (e) { await new Promise<void>((r) => server.close(() => r())); throw e; }
   twin = new Twin(def, {
     baseUrl: url, chaos: opts.chaos ?? null, webhookUrls: opts.webhookUrls, allowWebhookHosts: opts.allowWebhookHosts,
-    webhookSecret: opts.webhookSecret, timeoutMs: opts.timeoutMs, autoScale: opts.autoScale,
+    webhookSecret: opts.webhookSecret ?? saved?.webhookSecret, timeoutMs: opts.timeoutMs, autoScale: opts.autoScale,
   });
+  let stateInfo: RunningTwin["state"];
+  let saveTimer: NodeJS.Timeout | undefined;
+  const save = () => {
+    clearTimeout(saveTimer); saveTimer = undefined;
+    if (!opts.statePath) return;
+    try { const s = twin.exportState(); writeState(opts.statePath, s); if (stateInfo) stateInfo.savedAt = s.savedAt; }
+    catch (e) { if (!twin.warnings.includes(`state: ${(e as Error).message}`)) twin.warnings.push(`state: ${(e as Error).message}`); }
+  };
+  if (opts.statePath) {
+    stateInfo = { path: opts.statePath, restored: 0, dropped: 0 };
+    if (saved) {
+      try { const r = twin.importState(saved); stateInfo.restored = r.objects; stateInfo.dropped = r.dropped; }
+      catch (e) { twin.close(); await new Promise<void>((r) => server.close(() => r())); throw e; }
+    }
+  }
   const unsub = twin.onChange((kind, data) => {
     const line = `event: ${kind}\ndata: ${JSON.stringify(kind === "state" ? null : data)}\n\n`;
     for (const s of sse) s.write(line);
+    if (opts.statePath && !saveTimer) saveTimer = setTimeout(save, 250);
   });
   const running: RunningTwin = {
     twin, url, port, token,
     dashboardUrl: `${url}${CONTROL}/#token=${token}`,
+    state: stateInfo,
     close: async () => {
       unsub();
+      if (opts.statePath) save();
       twin.close();
       for (const s of sse) s.end();
       server.closeAllConnections?.();

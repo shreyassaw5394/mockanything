@@ -1,5 +1,7 @@
 # Mock Anything
 
+<!-- mcp-name: io.github.shreyassaw5394/mockanything -->
+
 **A working twin of any API, running on your machine in one command. No keys, no sandbox sign-up, no bill.**
 
 ```bash
@@ -67,6 +69,16 @@ npx mockanything twin.yaml
 
 Twins built straight from the public Stripe, Twilio, GitHub and Resend specs, with no hand-tuning, pass the official SDKs' basic create/read/update/list/delete flows (`scripts/conformance.ts`).
 
+### From a recording
+
+Record your app talking to the real API (browser DevTools → Network → "Save all as HAR", or any proxy that writes HAR) and start a twin from the file:
+
+```bash
+npx mockanything ./checkout.har
+```
+
+Mock Anything rebuilds the endpoints, id formats, list shapes and status lifecycles it saw. It keeps field names and shapes only: header values, cookies, query values and free text from the recording are never copied into the twin, and emails, URLs and dates are replaced with made-up values.
+
 No spec at all? Let your agent build one: the MCP tool `twin_from_docs` reads a documentation page and gives the agent a short format guide; the agent writes a twin definition and starts it with `twin_start`.
 
 ## For agents (MCP)
@@ -85,6 +97,15 @@ Tools: `twin_start`, `twin_from_docs`, `twin_env`, `twin_events`, `twin_state`, 
 
 An agent can say "start a Stripe twin, build the checkout, then force a declined card and check my code handles it" without asking you for keys.
 
+## Keep data between restarts
+
+```bash
+npx mockanything stripe --persist            # ~/.mockanything/state/stripe.json
+npx mockanything stripe --state ./twin.json  # or a file you choose
+```
+
+Objects, id counters, the test clock, the webhook secret and registered webhook endpoints are saved shortly after each change and when the twin stops. The file is readable by you only. Delete it (or press Reset in the dashboard) to start fresh. Agents get the same with `twin_start` and `persist: true`.
+
 ## Dashboard
 
 Every twin has a local dashboard (the link with its access token is printed at start): live requests and responses, webhooks sent and their delivery status, the twin's stored state, scenarios to force, and chaos controls.
@@ -97,11 +118,12 @@ mockanything list                  built-in packs
 mockanything inspect <api>         print the inferred definition (--out file.yaml)
 mockanything validate <file>       check a twin definition
 mockanything env <api>             config snippets
+mockanything verify <api>          how closely the twin matches the real API (your test key)
 mockanything mcp                   MCP server over stdio
 
 --port <n>  --webhook <url>  --allow-webhook-host <host>  --cors <origin>
 --chaos[=timeout,5xx,slow,429,dup-webhooks,out-of-order]  --chaos-rate <0..1>  --seed <n>
---overrides <file>  --json
+--persist  --state <file>  --overrides <file>  --json
 ```
 
 ## Safe by default
@@ -113,7 +135,26 @@ mockanything mcp                   MCP server over stdio
 
 ## How faithful is a twin?
 
-A twin is only as good as the facts it was built from. Packs cover the main flow of each API, not every endpoint, and inferred twins make guesses that you can inspect and override. Use twins to build and test quickly; run your final checks against the provider's real sandbox before you ship. A fidelity report (`mockanything verify`, comparing a twin with the real sandbox) is next on the roadmap.
+A twin is only as good as the facts it was built from. Packs cover the main flow of each API, not every endpoint, and inferred twins make guesses that you can inspect and override.
+
+`verify` measures it. It runs the same scripted calls against the twin and against the provider's real sandbox, using your own test-mode key, and compares status codes, field names, field types, id formats and error codes:
+
+```bash
+npx mockanything verify stripe --key sk_test_...      # or set MOCKANYTHING_SANDBOX_KEY
+npx mockanything verify paystack --key sk_test_... --out report.md
+npx mockanything verify ./openapi.yaml --against https://api.example.com --key ...   # read-only list calls
+```
+
+```
+  ✓ Create a customer                              200 / 200  <score>
+  ✓ Declined card (error)                          402 / 402  <score>
+  ...
+  Fidelity <score>  status · fields · types · ids and codes
+```
+
+It only runs with test-mode keys (live keys are refused), makes about one call a second with a hard cap per run, and creates a few test objects in your sandbox (the Stripe suite deletes its customer afterwards). The report lists field paths and code values only, never your data, so it is safe to share. Built-in suites: `stripe`, `paystack`; write your own for any twin (see `packs/verify/`). Webhooks are not compared yet.
+
+`mockanything list` shows each pack's published score and the date it was measured. Use twins to build and test quickly; run your final checks against the provider's sandbox before you ship.
 
 ## Twin definitions
 

@@ -8,11 +8,12 @@ import type { TwinDefinition } from "../engine/types.js";
 import { isLoopbackUrl } from "../engine/util.js";
 import { safeFetch } from "../lib/safeFetch.js";
 import { ingestOpenApi, type InferenceReport } from "./openapi.js";
+import { harToOpenApi, isHar } from "./har.js";
 
 export interface Resolved {
   def: TwinDefinition;
   report?: InferenceReport;
-  origin: "pack" | "definition" | "openapi-file" | "openapi-url" | "apis-guru";
+  origin: "pack" | "definition" | "openapi-file" | "openapi-url" | "apis-guru" | "har";
   detail: string;
   alternatives?: string[];
 }
@@ -73,9 +74,15 @@ function fromDocument(doc: unknown, where: string, origin: Resolved["origin"]): 
     const { def, report } = ingestOpenApi(doc, where);
     return { def, report, origin, detail: where };
   }
-  const log = doc && typeof doc === "object" ? (doc as Record<string, unknown>).log : undefined;
-  if (log && typeof log === "object" && (log as Record<string, unknown>).entries) {
-    throw new Error("HAR recordings are coming soon. For now, pass an OpenAPI spec or a provider name.");
+  if (isHar(doc)) {
+    const name = where.split(/[\\/]/).pop() ?? where;
+    const { openapi, summary, notes } = harToOpenApi(doc, name);
+    const { def, report } = ingestOpenApi(openapi);
+    def.id = def.id || "recorded";
+    def.source = { kind: "har", notes: `Generated locally from a recording (${name}). Field names and shapes only; no header values or text from the recording.` };
+    def.notes = [`Built from ${summary.used} recorded requests to ${summary.host} (${summary.operations} operations).`, ...notes, ...(def.notes ?? [])];
+    report.guesses.unshift(`Built from ${summary.used} of ${summary.entries} recorded requests to ${summary.host}.`, ...notes);
+    return { def, report, origin: "har", detail: `${name} (recording of ${summary.host})` };
   }
   throw new Error(`${where} is not an OpenAPI/Swagger description or a Mock Anything twin definition.`);
 }

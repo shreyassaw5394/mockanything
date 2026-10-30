@@ -9,6 +9,7 @@ import type { TwinDefinition } from "../engine/types.js";
 import { resolveSource, discoverSpecLink, fetchText, DocsPageError } from "../ingest/resolve.js";
 import { DEFINITION_GUIDE } from "./guide.js";
 import { VERSION } from "../version.js";
+import { defaultStatePath } from "../engine/state.js";
 
 interface Entry { name: string; running: RunningTwin; origin: string }
 const twins = new Map<string, Entry>();
@@ -36,6 +37,7 @@ function summary(e: Entry): Record<string, unknown> {
     webhookSecret: def.webhooks ? t.twin.webhookSecret : undefined, webhookEndpoints: t.twin.listEndpoints(),
     resources: Object.keys(def.resources).length, operations: def.operations.length,
     scenarios: t.twin.scenarioNames().map((s) => s.name), chaos: t.twin.chaos, notes: def.notes ?? [],
+    savedState: t.state ? { path: t.state.path, restored: t.state.restored } : undefined,
     snippets: Object.fromEntries(Object.entries(def.snippets ?? {}).map(([k, v]) => [k, fill(v, t)])),
   };
 }
@@ -71,13 +73,14 @@ export function createMcpServer(): McpServer {
     port: z.number().int().min(0).max(65535).optional().describe("Port (default: a free one)"),
     webhooks: z.array(z.string().url()).max(20).optional().describe("Localhost URLs to deliver webhooks to"),
     chaos: z.boolean().optional(),
+    persist: z.boolean().optional().describe("Keep this twin's objects between restarts (saved under ~/.mockanything/state)"),
   }, async (a) => {
     let def: TwinDefinition;
     let origin: string;
     if (a.definition) { def = validateDefinition({ ...a.definition, source: { kind: "agent" } }); origin = "definition from agent"; }
     else if (a.source) {
-      if (!/^https?:\/\//i.test(a.source) && /[/\\.]/.test(a.source) && ![".json", ".yaml", ".yml"].includes(extname(a.source).toLowerCase()) && !/^[a-z0-9._-]+$/i.test(a.source)) {
-        return err("Files must be .json, .yaml or .yml OpenAPI descriptions or twin definitions.");
+      if (!/^https?:\/\//i.test(a.source) && /[/\\.]/.test(a.source) && ![".json", ".yaml", ".yml", ".har"].includes(extname(a.source).toLowerCase()) && !/^[a-z0-9._-]+$/i.test(a.source)) {
+        return err("Files must be .json, .yaml or .yml OpenAPI descriptions or twin definitions, or .har recordings.");
       }
       try { const r = await resolveSource(a.source); def = r.def; origin = r.detail; }
       catch (e) {
@@ -87,7 +90,7 @@ export function createMcpServer(): McpServer {
     } else return err("Pass `source` or `definition`.");
     const name = a.name ?? def.id;
     if (twins.has(name)) { await twins.get(name)!.running.close(); twins.delete(name); }
-    const running = await serveTwin(def, { port: a.port ?? 0, webhookUrls: a.webhooks, chaos: a.chaos ? parseChaos({}) : null });
+    const running = await serveTwin(def, { port: a.port ?? 0, webhookUrls: a.webhooks, chaos: a.chaos ? parseChaos({}) : null, statePath: a.persist ? defaultStatePath(def.id) : undefined });
     const entry = { name, running, origin };
     twins.set(name, entry);
     return ok(summary(entry));

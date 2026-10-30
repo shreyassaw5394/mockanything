@@ -1,0 +1,57 @@
+# Fidelity suite for the Paystack twin. Runs against Paystack's test mode with your own test secret key (sk_test_…).
+# Creates a test customer and an initialized (unpaid) test transaction in your sandbox. Paystack has no delete calls.
+schema: 1
+twin: paystack
+title: Paystack accept-payments flow
+realBaseUrl: https://api.paystack.co
+testKey: "^sk_test_"
+twinKey: sk_test_mockanything
+encoding: json
+ignore:
+  - "data.integration"
+  - "data.domain"
+steps:
+  - id: customer_create
+    name: Create a customer
+    method: POST
+    path: /customer
+    body: { email: verify@example.com, first_name: Mock, last_name: Verify }
+    save: { customer: data.customer_code }
+  - id: customer_read
+    name: Fetch the customer
+    method: GET
+    path: "/customer/{{customer}}"
+  - id: customer_update
+    name: Update the customer
+    method: PUT
+    path: "/customer/{{customer}}"
+    body: { first_name: Updated }
+  - id: customer_list
+    name: List customers
+    method: GET
+    path: /customer
+    query: { perPage: 3 }
+  - id: trx_initialize
+    name: Initialize a transaction
+    method: POST
+    path: /transaction/initialize
+    body: { email: verify@example.com, amount: 500000 }
+    save: { ref: data.reference }
+  - id: trx_verify
+    name: Verify the (unpaid) transaction
+    method: GET
+    path: "/transaction/verify/{{ref}}"
+  - id: trx_list
+    name: List transactions
+    method: GET
+    path: /transaction
+    query: { perPage: 3 }
+  - id: trx_missing
+    name: Verify a reference that doesn't exist (error)
+    method: GET
+    path: /transaction/verify/mockanything_missing_ref
+  - id: no_key
+    name: Call without a key (error)
+    method: GET
+    path: /customer
+    noAuth: true

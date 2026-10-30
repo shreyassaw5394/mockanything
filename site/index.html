@@ -99,7 +99,7 @@
 
 <section id="apis" class="lineup" aria-labelledby="apis-title">
   <h2 id="apis-title" data-r>Any API, by name.</h2>
-  <p class="lineup-lede" data-r>Five hand-tuned packs, 2,529 APIs from the public APIs.guru directory, or your own OpenAPI file. Mock Anything reads the description and builds the twin itself.</p>
+  <p class="lineup-lede" data-r>Five hand-tuned packs, 2,529 APIs from the public APIs.guru directory, your own OpenAPI file, or a recording of your traffic. Mock Anything reads it and builds the twin itself.</p>
   <table class="lu">
     <caption class="sr">APIs you can run as a twin</caption>
     <thead class="sr"><tr><th scope="col">API</th><th scope="col">What it covers</th><th scope="col">Source</th><th scope="col">Command</th></tr></thead>
@@ -118,6 +118,7 @@
       <tr><th scope="row">Asana</th><td>Asana API</td><td>inferred</td><td><code translate="no">npx mockanything asana</code></td></tr>
       <tr class="lu-h"><th colspan="4" scope="colgroup">Your own</th></tr>
       <tr><th scope="row">Your spec</th><td>OpenAPI 3 or Swagger 2</td><td>file or URL</td><td><code translate="no">npx mockanything api.yaml</code></td></tr>
+      <tr><th scope="row">A recording</th><td>HAR from DevTools or a proxy</td><td>file</td><td><code translate="no">npx mockanything app.har</code></td></tr>
       <tr><th scope="row">Just the docs</th><td>Your agent writes the twin</td><td>MCP</td><td><code translate="no">twin_from_docs(url)</code></td></tr>
     </tbody>
   </table>
@@ -194,7 +195,7 @@ mockanything list             built-in packs</code></pre>
     <li data-r><b>No real cards.</b> Real-looking card numbers are refused.</li>
     <li data-r><b>Plain test pages.</b> Unbranded, and they say they are not real.</li>
     <li data-r><b>No telemetry.</b> Mock Anything does not phone home.</li>
-    <li data-r><b>Honest about fidelity.</b> Packs cover each API's main flow, not every endpoint. Run final checks against the provider's sandbox.</li>
+    <li data-r><b>Measured, not claimed.</b> <code translate="no">mockanything verify</code> compares a twin with the provider's real sandbox, using your own test key, and scores the match.</li>
   </ul>
 </section>
 
@@ -203,8 +204,10 @@ mockanything list             built-in packs</code></pre>
   <div class="faq-list">
     <details name="faq" data-r><summary>Is Mock Anything affiliated with Stripe, Twilio or the other providers?<span class="pm" aria-hidden="true"></span></summary><p>No. Mock Anything is an independent, free, non-commercial project. Provider names are used only to say which API a twin is compatible with. Twins are built from public API facts, not from any provider's code or documentation text.</p></details>
     <details name="faq" data-r><summary>Do I need an account or API key?<span class="pm" aria-hidden="true"></span></summary><p>No. Any placeholder key works, for example <code translate="no">sk_test_mockanything</code>. Live keys are refused.</p></details>
-    <details name="faq" data-r><summary>Does anything I send leave my machine?<span class="pm" aria-hidden="true"></span></summary><p>No. The twin runs locally and answers from memory. The only outbound traffic is the webhooks you point at your own app, and fetching an API description when you ask for one by name or URL.</p></details>
-    <details name="faq" data-r><summary>Which APIs work?<span class="pm" aria-hidden="true"></span></summary><p>Anything with an OpenAPI or Swagger description, the 2,529 APIs listed by name in the public APIs.guru directory, the built-in packs, and APIs your agent describes from their documentation.</p></details>
+    <details name="faq" data-r><summary>Does anything I send leave my machine?<span class="pm" aria-hidden="true"></span></summary><p>No. The twin runs locally and answers from memory. The only outbound traffic is the webhooks you point at your own app, fetching an API description when you ask for one by name or URL, and the sandbox calls <code translate="no">verify</code> makes when you run it with your own test key.</p></details>
+    <details name="faq" data-r><summary>Which APIs work?<span class="pm" aria-hidden="true"></span></summary><p>Anything with an OpenAPI or Swagger description, the 2,529 APIs listed by name in the public APIs.guru directory, the built-in packs, HAR recordings of your own traffic, and APIs your agent describes from their documentation.</p></details>
+    <details name="faq" data-r><summary>How close is a twin to the real API?<span class="pm" aria-hidden="true"></span></summary><p>Run <code translate="no">npx mockanything verify stripe --key sk_test_…</code>. It makes the same calls to the twin and to the provider's sandbox and compares status codes, fields, types, id formats and error codes. Live keys are refused, and the report holds field names, never your data.</p></details>
+    <details name="faq" data-r><summary>Does a twin remember data after a restart?<span class="pm" aria-hidden="true"></span></summary><p>With <code translate="no">--persist</code>, yes. Objects, ids, the test clock and the webhook secret are saved to a file only you can read.</p></details>
     <details name="faq" data-r><summary>Can I use it in CI?<span class="pm" aria-hidden="true"></span></summary><p>Yes. Start a twin before your tests and point your SDK's base URL at it. Use <code translate="no">--seed</code> to make chaos runs repeatable.</p></details>
     <details name="faq" data-r><summary>How do I add a provider?<span class="pm" aria-hidden="true"></span></summary><p>Packs are plain YAML. The contributing guide in the repository explains the rules: facts only, no branding, and a test with the official SDK.</p></details>
   </div>

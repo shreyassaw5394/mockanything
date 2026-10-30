@@ -1,0 +1,16 @@
+{
+  "name": "mockanything",
+  "owner": { "name": "Shreyas Sawant", "url": "https://github.com/shreyassaw5394" },
+  "metadata": { "description": "Mock Anything. API twins for agents.", "version": "0.2.0" },
+  "plugins": [
+    {
+      "name": "mockanything",
+      "source": "./",
+      "description": "Run a local, stateful twin of any API (built-in packs, any OpenAPI spec, any API name, or a HAR recording) and test against it instead of the real provider. Installs the MCP server and the mock-anything skill.",
+      "version": "0.2.0",
+      "category": "testing",
+      "keywords": ["mock", "api", "testing", "webhooks", "mcp"],
+      "homepage": "https://mockanything.dev"
+    }
+  ]
+}
