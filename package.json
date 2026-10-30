@@ -54,7 +54,7 @@
     "@octokit/rest": "^22.0.1",
     "@types/node": "^26.6.5",
     "openai": "^7.45.1",
-    "oxlint": "^1.89.0",
+    "oxlint": "^1.90.0",
     "resend": "^6.34.1",
     "stripe": "^23.0.1",
     "tsup": "^9.0.0",
