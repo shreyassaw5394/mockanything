@@ -15,7 +15,7 @@ Run it in the background (it keeps running) and read the URL it prints:
 
 | The user gave you | Command |
 |---|---|
-| A provider name (`stripe`, `paystack`, `twilio`, `resend`, `github`, `openai`, 54 more from the providers' own specs such as `square`, `jira`, `supabase`, or any of ~2,500 public APIs) | `npx -y mockanything <name>` |
+| A provider name (`stripe`, `paystack`, `twilio`, `resend`, `github`, `openai`, `anthropic`, 54 more from the providers' own specs such as `square`, `jira`, `supabase`, or any of ~2,500 public APIs) | `npx -y mockanything <name>` |
 | An OpenAPI / Swagger file or URL | `npx -y mockanything ./openapi.yaml` |
 | A HAR recording of their app's traffic | `npx -y mockanything ./traffic.har` |
 | Only a documentation page | see step 4 |

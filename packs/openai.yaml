@@ -5,13 +5,13 @@
 schema: 1
 id: openai
 title: OpenAI
-description: Chat completions (canned replies, forced tool calls, errors), the Responses API, embeddings and models. No model runs; answers say [mock].
+description: Chat completions and responses, streamed or not (canned replies, forced tool calls, errors), embeddings and models. No model runs; answers say [mock].
 source: { kind: pack, url: "https://github.com/openai/openai-openapi", license: MIT, notes: "Hand-written from public API facts." }
 basePath: /v1
 auth: { type: bearer, warnPattern: "^sk-(proj-|svcacct-)?[A-Za-z0-9_-]{30,}" }
 notes:
   - "Every answer is canned and starts with [mock]. Force a tool call with: mockanything scenario tool_call (it calls the first tool you pass)."
-  - "Errors on demand: rate_limit, insufficient_quota, context_length_exceeded, server_error. Streaming (stream: true) is not supported yet and returns a clear error."
+  - "Errors on demand: rate_limit, insufficient_quota, context_length_exceeded, server_error. stream: true works for chat completions and responses (the canned reply arrives in chunks)."
   - "Embeddings are short fixed vectors (8 numbers), not real embeddings."
 snippets:
   node: |
@@ -119,9 +119,21 @@ operations:
     path: /chat/completions
     action: create
     resource: chat_completions
-    require:
-      - when: { not: { path: body.stream, truthy: true } }
-        error: { status: 400, message: "[mock] Streaming (stream: true) isn't supported by the Mock Anything OpenAI twin yet. Call without stream.", type: invalid_request_error, param: stream, code: unsupported_parameter }
+    stream:
+      when: { path: body.stream, truthy: true }
+      done: "[DONE]"
+      events:
+        - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: { role: assistant, content: "", refusal: null }, logprobs: null, finish_reason: null } ] }
+        - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: { content: "[mock] " }, logprobs: null, finish_reason: null } ] }
+        - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: { content: "This is a canned reply " }, logprobs: null, finish_reason: null } ] }
+        - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: { content: "from the Mock Anything OpenAI twin." }, logprobs: null, finish_reason: null } ] }
+        - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: {}, logprobs: null, finish_reason: stop } ] }
+      cases:
+        - when: { path: $data.choices.0.finish_reason, equals: tool_calls }
+          events:
+            - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: { role: assistant, content: null, tool_calls: [ { index: 0, id: "{{$data.choices.0.message.tool_calls.0.id}}", type: function, function: { name: "{{$data.choices.0.message.tool_calls.0.function.name}}", arguments: "" } } ] }, logprobs: null, finish_reason: null } ] }
+            - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: { tool_calls: [ { index: 0, function: { arguments: "{}" } } ] }, logprobs: null, finish_reason: null } ] }
+            - { id: "{{$data.id}}", object: chat.completion.chunk, created: "{{$data.created}}", model: "{{$data.model}}", system_fingerprint: fp_mockanything, choices: [ { index: 0, delta: {}, logprobs: null, finish_reason: tool_calls } ] }
   - { method: GET, path: /chat/completions, action: list, resource: chat_completions }
   - { method: GET, path: "/chat/completions/{completion_id}", action: read, resource: chat_completions }
   - { method: DELETE, path: "/chat/completions/{completion_id}", action: delete, resource: chat_completions, response: { body: { object: chat.completion.deleted, id: "{{obj.id}}", deleted: true } } }
@@ -129,9 +141,21 @@ operations:
     path: /responses
     action: create
     resource: responses
-    require:
-      - when: { not: { path: body.stream, truthy: true } }
-        error: { status: 400, message: "[mock] Streaming (stream: true) isn't supported by the Mock Anything OpenAI twin yet. Call without stream.", type: invalid_request_error, param: stream, code: unsupported_parameter }
+    stream:
+      when: { path: body.stream, truthy: true }
+      eventField: type
+      events:
+        - { type: response.created, sequence_number: 0, response: { id: "{{$data.id}}", object: response, created_at: "{{$data.created_at}}", status: in_progress, model: "{{$data.model}}", output: [], error: null, incomplete_details: null } }
+        - { type: response.in_progress, sequence_number: 1, response: { id: "{{$data.id}}", object: response, created_at: "{{$data.created_at}}", status: in_progress, model: "{{$data.model}}", output: [], error: null, incomplete_details: null } }
+        - { type: response.output_item.added, sequence_number: 2, output_index: 0, item: { id: "{{$data.output.0.id}}", type: message, status: in_progress, role: assistant, content: [] } }
+        - { type: response.content_part.added, sequence_number: 3, item_id: "{{$data.output.0.id}}", output_index: 0, content_index: 0, part: { type: output_text, text: "", annotations: [] } }
+        - { type: response.output_text.delta, sequence_number: 4, item_id: "{{$data.output.0.id}}", output_index: 0, content_index: 0, delta: "[mock] " }
+        - { type: response.output_text.delta, sequence_number: 5, item_id: "{{$data.output.0.id}}", output_index: 0, content_index: 0, delta: "This is a canned reply " }
+        - { type: response.output_text.delta, sequence_number: 6, item_id: "{{$data.output.0.id}}", output_index: 0, content_index: 0, delta: "from the Mock Anything OpenAI twin." }
+        - { type: response.output_text.done, sequence_number: 7, item_id: "{{$data.output.0.id}}", output_index: 0, content_index: 0, text: "[mock] This is a canned reply from the Mock Anything OpenAI twin." }
+        - { type: response.content_part.done, sequence_number: 8, item_id: "{{$data.output.0.id}}", output_index: 0, content_index: 0, part: { type: output_text, text: "[mock] This is a canned reply from the Mock Anything OpenAI twin.", annotations: [] } }
+        - { type: response.output_item.done, sequence_number: 9, output_index: 0, item: "{{$data.output.0}}" }
+        - { type: response.completed, sequence_number: 10, response: "{{$data}}" }
   - { method: GET, path: "/responses/{response_id}", action: read, resource: responses }
   - { method: DELETE, path: "/responses/{response_id}", action: delete, resource: responses, response: { body: { object: response.deleted, id: "{{obj.id}}", deleted: true } } }
   - method: POST

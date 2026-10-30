@@ -473,6 +473,8 @@ export class Twin {
       key = /^Basic\s+/i.test(h) ? basicKey(h) : (h.match(/^(?:Bearer|token)\s+(.+)$/i)?.[1]?.trim() ?? "");
     } else if (a.type === "header") {
       key = headers[(a.name ?? "x-api-key").toLowerCase()] ?? "";
+      // newer SDKs (Anthropic's among them) send the same key as a bearer token
+      if (!key) key = (headers["authorization"] ?? "").match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? "";
     } else if (a.type === "query") {
       key = new URLSearchParams(rawQuery).get(a.name ?? "api_key") ?? "";
     }
@@ -575,7 +577,11 @@ export class Twin {
     const resource = op.resource ?? "";
     ctx.$resource = resource;
     switch (op.action) {
-      case "create": return this.opCreate(op, resource, ctx, log);
+      case "create": {
+        const res = this.opCreate(op, resource, ctx, log);
+        if (op.stream && res.status < 300 && evalCondition(op.stream.when, ctx)) return this.streamResponse(op.stream, resource, ctx);
+        return res;
+      }
       case "read": {
         const obj = this.find(op, resource, ctx);
         ctx.obj = obj;
@@ -1190,6 +1196,23 @@ export class Twin {
     if (this.def.conventions?.errorDropNulls) body = dropNulls(body);
     const status = Number(full.$status) || spec.status;
     return this.json(status, body);
+  }
+
+  /** Server-sent events built from the created object, sent in one response (clients read them as a stream). */
+  private streamResponse(sd: NonNullable<OperationDef["stream"]>, resource: string, ctx: EvalContext): TwinResponse {
+    const obj = ctx.obj as Record<string, Json>;
+    const data = this.output(resource, obj, []);
+    const sctx = { ...ctx, $data: data, obj: data } as EvalContext;
+    const events = sd.cases?.find((c) => evalCondition(c.when, sctx))?.events ?? sd.events;
+    let body = "";
+    for (const t of events) {
+      const ev = render(t, sctx);
+      const name = sd.eventField && ev && typeof ev === "object" && !Array.isArray(ev) ? (ev as Record<string, Json>)[sd.eventField] : undefined;
+      if (typeof name === "string") body += `event: ${name}\n`;
+      body += `data: ${JSON.stringify(ev)}\n\n`;
+    }
+    if (sd.done) body += `data: ${sd.done}\n\n`;
+    return { status: 200, headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache" }, body };
   }
 
   private json(status: number, body: Json): TwinResponse {

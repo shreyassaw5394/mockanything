@@ -1,0 +1,122 @@
+# Twin of the Anthropic API (Messages, streaming, tool use, token counting, models). Facts only: endpoint paths,
+# header names, field names, event names and error types from the public API reference.
+# Not affiliated with or endorsed by Anthropic. Anthropic and Claude are trademarks of Anthropic, PBC.
+# Answers are canned and marked "[mock]": no model runs, and nothing here is presented as real model output.
+schema: 1
+id: anthropic
+title: Anthropic
+description: Messages (streamed or not, canned replies, forced tool use, errors), token counting and models. No model runs; answers say [mock].
+source: { kind: pack, url: "https://docs.anthropic.com/en/api/messages", notes: "Hand-written from public API facts." }
+basePath: /v1
+auth: { type: header, name: x-api-key, warnPattern: "^sk-ant-(api|admin)[0-9]{2}-[A-Za-z0-9_-]{40,}" }
+notes:
+  - "Every answer is canned and starts with [mock]. Force tool use with: mockanything scenario tool_use (it calls the first tool you pass)."
+  - "Errors on demand: rate_limit, overloaded, invalid_request, api_error. stream: true sends the real event sequence (message_start … message_stop)."
+snippets:
+  node: |
+    import Anthropic from "@anthropic-ai/sdk";
+    const anthropic = new Anthropic({ apiKey: "sk-ant-mockanything", baseURL: "{{baseUrl}}" });
+  python: |
+    import anthropic
+    client = anthropic.Anthropic(api_key="sk-ant-mockanything", base_url="{{baseUrl}}")
+  env: |
+    ANTHROPIC_API_KEY=sk-ant-mockanything
+    ANTHROPIC_BASE_URL={{baseUrl}}
+conventions:
+  timestamps: iso
+  list: { data: "{{$items}}", has_more: "{{$hasMore}}", first_id: null, last_id: null }
+  listStyle: { kind: cursor, limitParam: limit, afterParam: after_id, beforeParam: before_id, defaultLimit: 20, maxLimit: 1000, order: desc }
+  error: { type: error, error: { type: "{{$type}}", message: "{{$message}}" } }
+  errors:
+    notFound: { status: 404, message: "Not found: {{$id}}", type: not_found_error }
+    unauthorized: { status: 401, message: "x-api-key header is required. Any key works with this twin, e.g. sk-ant-mockanything.", type: authentication_error }
+    missingParam: { status: 400, message: "{{$param}}: Field required", type: invalid_request_error }
+    rateLimited: { status: 429, message: "Number of request tokens has exceeded your per-minute rate limit.", type: rate_limit_error }
+    serverError: { status: 500, message: "Internal server error", type: api_error }
+
+resources:
+  messages:
+    singular: message
+    id: { style: prefixed, prefix: msg_01, length: 22 }
+    required: [model, max_tokens, messages]
+    types: { max_tokens: integer }
+    accept: [model]
+    defaults:
+      type: message
+      role: assistant
+      model: "{{body.model}}"
+      content:
+        - { type: text, text: "[mock] This is a canned reply from the Mock Anything Anthropic twin." }
+      stop_reason: end_turn
+      stop_sequence: null
+      usage: { input_tokens: 12, output_tokens: 14, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }
+  models:
+    singular: model
+    sample: true
+    id: { style: prefixed, prefix: claude-mock-, length: 6 }
+    defaults: { type: model, display_name: "Mock model", created_at: "2026-01-01T00:00:00Z" }
+
+scenarios:
+  tool_use:
+    description: The reply uses the first tool in the request instead of answering.
+    on: messages.create
+    set:
+      content:
+        - { type: tool_use, id: "{{newId('toolu_01', 22)}}", name: "{{body.tools.0.name ?? 'tool'}}", input: {} }
+      stop_reason: tool_use
+  rate_limit:
+    description: 429 rate_limit_error.
+    on: messages.create
+    error: { status: 429, message: "Number of request tokens has exceeded your per-minute rate limit.", type: rate_limit_error }
+  overloaded:
+    description: 529 overloaded_error.
+    on: messages.create
+    error: { status: 529, message: "Overloaded", type: overloaded_error }
+  invalid_request:
+    description: 400 invalid_request_error (for example a prompt that is too long).
+    on: messages.create
+    error: { status: 400, message: "prompt is too long", type: invalid_request_error }
+  api_error:
+    description: 500 api_error.
+    on: messages.create
+    error: { status: 500, message: "Internal server error", type: api_error }
+
+operations:
+  - method: POST
+    path: /messages
+    action: create
+    resource: messages
+    require:
+      - when: { path: headers.anthropic-version, exists: true }
+        error: { status: 400, message: "anthropic-version: header is required", type: invalid_request_error }
+    stream:
+      when: { path: body.stream, truthy: true }
+      eventField: type
+      events:
+        - { type: message_start, message: { id: "{{$data.id}}", type: message, role: assistant, model: "{{$data.model}}", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 12, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } }
+        - { type: content_block_start, index: 0, content_block: { type: text, text: "" } }
+        - { type: ping }
+        - { type: content_block_delta, index: 0, delta: { type: text_delta, text: "[mock] " } }
+        - { type: content_block_delta, index: 0, delta: { type: text_delta, text: "This is a canned reply " } }
+        - { type: content_block_delta, index: 0, delta: { type: text_delta, text: "from the Mock Anything Anthropic twin." } }
+        - { type: content_block_stop, index: 0 }
+        - { type: message_delta, delta: { stop_reason: end_turn, stop_sequence: null }, usage: { output_tokens: 14 } }
+        - { type: message_stop }
+      cases:
+        - when: { path: $data.stop_reason, equals: tool_use }
+          events:
+            - { type: message_start, message: { id: "{{$data.id}}", type: message, role: assistant, model: "{{$data.model}}", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 12, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } }
+            - { type: content_block_start, index: 0, content_block: { type: tool_use, id: "{{$data.content.0.id}}", name: "{{$data.content.0.name}}", input: {} } }
+            - { type: content_block_delta, index: 0, delta: { type: input_json_delta, partial_json: "{}" } }
+            - { type: content_block_stop, index: 0 }
+            - { type: message_delta, delta: { stop_reason: tool_use, stop_sequence: null }, usage: { output_tokens: 14 } }
+            - { type: message_stop }
+  - method: POST
+    path: /messages/count_tokens
+    action: static
+    require:
+      - when: { path: body.messages, exists: true }
+        error: { status: 400, message: "messages: Field required", type: invalid_request_error }
+    response: { body: { input_tokens: 12 } }
+  - { method: GET, path: /models, action: list, resource: models }
+  - { method: GET, path: "/models/{model_id}", action: read, resource: models }

@@ -283,6 +283,20 @@ export interface OperationDef {
   set?: Record<string, Template>;
   /** For `static`: a canned body. */
   summary?: string;
+  /** Answer a create as server-sent events when `when` holds (e.g. `body.stream` is true). */
+  stream?: StreamDef;
+}
+
+export interface StreamDef {
+  when: Condition;
+  /** Each event is rendered (`{{$data}}` is the created object) and sent as `data: <json>`. */
+  events: Template[];
+  /** First matching case replaces `events` (e.g. a tool call instead of text). */
+  cases?: { when: Condition; events: Template[] }[];
+  /** Also send `event: <value of this field>` before each data line (OpenAI Responses API). */
+  eventField?: string;
+  /** Final data line, e.g. `[DONE]`. */
+  done?: string;
 }
 
 export interface EffectDef {

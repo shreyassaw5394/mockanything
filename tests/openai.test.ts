@@ -37,10 +37,35 @@ describe("OpenAI pack with the official SDK", () => {
     expect(e.code).toBe("rate_limit_exceeded");
   });
 
-  it("refuses streaming clearly and needs model + messages", async () => {
-    const s = await openai.chat.completions.create({ model: "gpt-4o", messages: [{ role: "user", content: "x" }], stream: true }).catch((x) => x);
-    expect(s).toBeInstanceOf(OpenAI.BadRequestError);
-    expect(String(s.message)).toContain("Streaming");
+  it("streams chat completions, including a forced tool call", async () => {
+    const stream = await openai.chat.completions.create({ model: "gpt-4o", messages: [{ role: "user", content: "x" }], stream: true });
+    let text = "", finish = "";
+    for await (const chunk of stream) { text += chunk.choices[0]?.delta?.content ?? ""; finish = chunk.choices[0]?.finish_reason ?? finish; }
+    expect(text).toBe("[mock] This is a canned reply from the Mock Anything OpenAI twin.");
+    expect(finish).toBe("stop");
+
+    t.twin.forceScenario("tool_call");
+    const runner = openai.chat.completions.stream({
+      model: "gpt-4o", messages: [{ role: "user", content: "weather?" }],
+      tools: [{ type: "function", function: { name: "get_weather", parameters: { type: "object", properties: {} } } }],
+    });
+    const final = await runner.finalChatCompletion();
+    expect(final.choices[0]!.finish_reason).toBe("tool_calls");
+    expect(final.choices[0]!.message.tool_calls?.[0]).toMatchObject({ type: "function", function: { name: "get_weather", arguments: "{}" } });
+  });
+
+  it("streams responses with named events", async () => {
+    const stream = await openai.responses.create({ model: "gpt-4o", input: "hi", stream: true });
+    const types: string[] = []; let text = "";
+    for await (const ev of stream) { types.push(ev.type); if (ev.type === "response.output_text.delta") text += ev.delta; }
+    expect(types[0]).toBe("response.created");
+    expect(types.at(-1)).toBe("response.completed");
+    expect(text).toMatch(/^\[mock\]/);
+    const helper = openai.responses.stream({ model: "gpt-4o", input: "hi" });
+    expect((await helper.finalResponse()).output_text).toMatch(/^\[mock\]/);
+  });
+
+  it("needs model + messages", async () => {
     const m = await openai.chat.completions.create({ model: "gpt-4o" } as never).catch((x) => x);
     expect(m).toBeInstanceOf(OpenAI.BadRequestError);
   });

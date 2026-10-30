@@ -43,7 +43,8 @@ Hand-tuned twins, checked against each provider's official SDK in our test suite
 | `twilio` | Send SMS, status callbacks (queued → sent → delivered), fetch, list, delete | `+15005550001` (invalid), `+15005550002` (unroutable), `+15005550004` (unsubscribed) … |
 | `resend` | Send, retrieve, list, schedule, cancel; delivery, bounce and complaint events | `delivered@resend.dev`, `bounced@resend.dev`, `complained@resend.dev` |
 | `github` | Repos, issues (open, edit, close, reopen), comments, pull requests (open, merge) | Any owner/repo works and starts empty |
-| `openai` | Chat completions, Responses API, embeddings, models. Replies are canned and start with `[mock]`; no model runs | Scenarios `tool_call`, `rate_limit`, `insufficient_quota`, `context_length_exceeded`, `server_error` |
+| `openai` | Chat completions and the Responses API, streamed or not; embeddings; models. Replies are canned and start with `[mock]`; no model runs | Scenarios `tool_call`, `rate_limit`, `insufficient_quota`, `context_length_exceeded`, `server_error` |
+| `anthropic` | Messages, streamed or not, with tool use; token counting; models. Replies are canned and start with `[mock]`; no model runs | Scenarios `tool_use`, `rate_limit`, `overloaded`, `invalid_request`, `api_error` |
 
 `mockanything env <pack>` prints the snippet for pointing the official SDK at the twin, for example:
 

@@ -65,6 +65,10 @@ const operation = z.object({
   response: z.object({ status: z.number().int().min(100).max(599).optional(), body: json.optional(), headers: z.record(str(100), json).optional() }).strict().optional(),
   emit: z.array(emit).max(50).optional(), effects: z.array(effect).max(10).optional(), require: requireList.optional(),
   set: tmplMap.optional(), summary: str(500).optional(),
+  stream: z.object({
+    when: condition, events: z.array(json).min(1).max(200), eventField: str(100).optional(), done: str(100).optional(),
+    cases: z.array(z.object({ when: condition, events: z.array(json).min(1).max(200) }).strict()).max(20).optional(),
+  }).strict().optional(),
 }).strict();
 const errors = z.object({
   notFound: errorSpec.optional(), unauthorized: errorSpec.optional(), liveKey: errorSpec.optional(), missingParam: errorSpec.optional(),
