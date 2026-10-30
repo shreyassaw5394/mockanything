@@ -195,6 +195,7 @@ export class Twin {
   reset(): void {
     for (const m of this.store.values()) m.clear();
     this.fallback.clear();
+    this.sampled.clear();
     this.ids.reset();
     this.seqs.clear();
     this.forced.clear();
@@ -384,6 +385,27 @@ export class Twin {
   }
 
   private fallback = new Map<string, Map<string, Record<string, Json>>>();
+  /** Resource+scope pairs that already got sample objects for lists. */
+  private sampled = new Set<string>();
+
+  /** A made-up object for a read-only resource, built from its defaults (the spec's examples and shapes). */
+  private sampleObject(resource: string, ctx: EvalContext, id?: string): Record<string, Json> {
+    const r = this.res(resource);
+    const scope = this.scopeOf(resource, ctx);
+    const idField = this.idField(resource);
+    const obj: Record<string, Json> = Object.create(null);
+    const asId: Json = id === undefined ? this.ids.next(r.id, JSON.stringify(scope)) as Json : (r.id?.style === "int" || r.id?.style === "sequence") && /^\d+$/.test(id) ? Number(id) : id;
+    obj[idField] = asId;
+    obj.__nonce = randomAlnum(20);
+    obj.__scope = scope;
+    const sctx = { ...ctx, obj, body: {} } as EvalContext;
+    for (const [k, t] of Object.entries(r.defaults ?? {})) obj[k] = render(t, sctx);
+    obj[idField] = asId;
+    if (r.lifecycle && (obj[r.lifecycle.field] === undefined || obj[r.lifecycle.field] === null)) obj[r.lifecycle.field] = render(r.lifecycle.initial, sctx);
+    this.store.get(resource)!.set(String(asId), obj);
+    this.notify("state", null);
+    return obj;
+  }
   /** Generic REST for paths a spec doesn't describe: POST creates, GET reads/lists, PUT/PATCH merges, DELETE removes. */
   private fallbackRest(method: string, path: string, body: Record<string, Json>): TwinResponse {
     const rel = path.slice((this.def.basePath ?? "").length) || "/";
@@ -618,6 +640,7 @@ export class Twin {
       found = m.get(wanted);
       if (found && !inScope(found)) found = undefined;
     }
+    if (!found && !op.lookup && this.def.resources[resource]?.sample && wanted) found = this.sampleObject(resource, ctx, wanted);
     if (!found) {
       const singular = this.def.resources[resource]?.singular ?? singularize(resource);
       throw new TwinError(this.errSpec("notFound", { status: 404, message: "No such {{$resource}}: '{{$id}}'", code: "resource_missing", param: "id" }), {
@@ -656,6 +679,8 @@ export class Twin {
       if (typeof v !== "string" || !v) continue;
       const m = this.store.get(target);
       if (!m || m.has(v)) continue;
+      // nothing in the API can create the target (models, regions, plans…): any value is accepted, like the real API's catalogue
+      if (this.def.resources[target]?.sample || !this.def.operations.some((o) => o.resource === target && o.action === "create")) continue;
       const singular = this.def.resources[target]?.singular ?? singularize(target);
       throw new TwinError({ ...this.errSpec("notFound", { status: 404, message: "No such {{$resource}}: '{{$id}}'", code: "resource_missing" }), status: 400, param: field }, { $resource: singular, $id: v, $param: field });
     }
@@ -767,6 +792,10 @@ export class Twin {
     const r = this.res(resource);
     const query = ctx.query as Record<string, Json>;
     const scope = this.scopeOf(resource, ctx);
+    if (r.sample) {
+      const key = `${resource}|${JSON.stringify(scope)}`;
+      if (!this.sampled.has(key)) { this.sampled.add(key); for (let i = 0; i < 3; i++) this.sampleObject(resource, ctx); }
+    }
     let items = [...this.store.get(resource)!.values()].filter((o) =>
       Object.entries(scope).every(([k, v]) => (o.__scope as Record<string, Json> | undefined)?.[k] === v));
     for (const [param, f] of Object.entries(r.filters ?? {})) {

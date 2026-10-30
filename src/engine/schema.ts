@@ -38,7 +38,7 @@ const transition = z.object({
   cases: z.array(z.object({ when: condition, ...change }).strict()).max(50).optional(), scenarios: str(100).optional(), ...change,
 }).strict();
 const resource = z.object({
-  singular: str(100).optional(), id: idDef.optional(), defaults: tmplMap.optional(),
+  singular: str(300).optional(), id: idDef.optional(), defaults: tmplMap.optional(),
   accept: z.union([z.literal("*"), z.array(str(200)).max(500)]).optional(), readonly: z.array(str(200)).max(500).optional(),
   required: z.array(str(200)).max(200).optional(),
   types: z.record(str(200), z.enum(["integer", "number", "boolean", "string", "array", "object"])).optional(),
@@ -48,7 +48,7 @@ const resource = z.object({
     transitions: z.record(str(100), transition),
     auto: z.array(z.object({ afterMs: z.number().min(0).max(3_600_000), transition: str(100), when: condition.optional() }).strict()).max(20).optional(),
   }).strict().optional(),
-  scope: z.array(str(100)).max(10).optional(),
+  scope: z.array(str(100)).max(200).optional(), sample: z.boolean().optional(),
   filters: z.record(str(100), z.union([str(200), z.object({ field: str(200), default: str(200).optional(), all: str(200).optional() }).strict()])).optional(),
   hidden: z.array(str(200)).max(200).optional(),
   unique: z.array(z.object({ field: str(200), error: errorSpec }).strict()).max(20).optional(),

@@ -99,7 +99,7 @@
 
 <section id="apis" class="lineup" aria-labelledby="apis-title">
   <h2 id="apis-title" data-r>Any API, by name.</h2>
-  <p class="lineup-lede" data-r>Five hand-tuned packs, 2,529 APIs from the public APIs.guru directory, your own OpenAPI file, or a recording of your traffic. Mock Anything reads it and builds the twin itself.</p>
+  <p class="lineup-lede" data-r>Six hand-tuned packs, 54 APIs from the provider's own current spec, 2,528 from the public APIs.guru directory, your own OpenAPI file, or a recording of your traffic. Mock Anything reads it and builds the twin itself.</p>
   <table class="lu">
     <caption class="sr">APIs you can run as a twin</caption>
     <thead class="sr"><tr><th scope="col">API</th><th scope="col">What it covers</th><th scope="col">Source</th><th scope="col">Command</th></tr></thead>
@@ -110,11 +110,12 @@
       <tr><th scope="row">Twilio</th><td>SMS and status callbacks</td><td>pack</td><td><code translate="no">npx mockanything twilio</code></td></tr>
       <tr><th scope="row">Resend</th><td>Email, bounces, scheduling</td><td>pack</td><td><code translate="no">npx mockanything resend</code></td></tr>
       <tr><th scope="row">GitHub</th><td>Issues, comments, pull requests</td><td>pack</td><td><code translate="no">npx mockanything github</code></td></tr>
-      <tr class="lu-h"><th colspan="4" scope="colgroup">From the directory</th></tr>
+      <tr><th scope="row">OpenAI</th><td>Chat, responses, embeddings, canned replies</td><td>pack</td><td><code translate="no">npx mockanything openai</code></td></tr>
+      <tr class="lu-h"><th colspan="4" scope="colgroup">Any other API, by name</th></tr>
       <tr><th scope="row">Slack</th><td>Slack Web API</td><td>inferred</td><td><code translate="no">npx mockanything slack</code></td></tr>
       <tr><th scope="row">Notion</th><td>Notion API</td><td>inferred</td><td><code translate="no">npx mockanything notion</code></td></tr>
       <tr><th scope="row">Spotify</th><td>Spotify Web API</td><td>inferred</td><td><code translate="no">npx mockanything spotify</code></td></tr>
-      <tr><th scope="row">OpenAI</th><td>OpenAI API</td><td>inferred</td><td><code translate="no">npx mockanything openai</code></td></tr>
+      <tr><th scope="row">Jira</th><td>Jira Cloud platform</td><td>inferred</td><td><code translate="no">npx mockanything jira</code></td></tr>
       <tr><th scope="row">Asana</th><td>Asana API</td><td>inferred</td><td><code translate="no">npx mockanything asana</code></td></tr>
       <tr class="lu-h"><th colspan="4" scope="colgroup">Your own</th></tr>
       <tr><th scope="row">Your spec</th><td>OpenAPI 3 or Swagger 2</td><td>file or URL</td><td><code translate="no">npx mockanything api.yaml</code></td></tr>
@@ -183,7 +184,7 @@ mockanything list             built-in packs</code></pre>
   <div class="tile" data-r><p class="tile-n">twilio</p><p>Messages and status callbacks through twilio-node.</p></div>
   <div class="tile" data-r><p class="tile-n">@octokit/rest</p><p>Issues, comments and pull requests per repo.</p></div>
   <div class="tile" data-r><p class="tile-n">resend</p><p>Send, schedule, cancel, with Svix-signed events.</p></div>
-  <div class="tile" data-r><p class="tile-n">20 of 20</p><p>SDK steps pass on twins built straight from the public specs.</p></div>
+  <div class="tile" data-r><p class="tile-n">2,528 of 2,528</p><p>APIs in the public directory start a twin. 37,770 calls, no server errors.</p></div>
   <div class="tile" data-r><p class="tile-n">83 ms</p><p>GitHub's 1,254-operation spec to a working twin.</p></div>
 </section>
 

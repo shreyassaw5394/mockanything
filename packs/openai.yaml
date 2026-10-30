@@ -1,0 +1,151 @@
+# Twin of the OpenAI API (chat completions, responses, embeddings, models). Facts only: endpoint paths, field names
+# and error codes. Reference: OpenAI's OpenAPI description (github.com/openai/openai-openapi, MIT).
+# Not affiliated with or endorsed by OpenAI. OpenAI is a trademark of OpenAI OpCo, LLC.
+# Answers are canned and marked "[mock]": no model runs, and nothing here is presented as real model output.
+schema: 1
+id: openai
+title: OpenAI
+description: Chat completions (canned replies, forced tool calls, errors), the Responses API, embeddings and models. No model runs; answers say [mock].
+source: { kind: pack, url: "https://github.com/openai/openai-openapi", license: MIT, notes: "Hand-written from public API facts." }
+basePath: /v1
+auth: { type: bearer, warnPattern: "^sk-(proj-|svcacct-)?[A-Za-z0-9_-]{30,}" }
+notes:
+  - "Every answer is canned and starts with [mock]. Force a tool call with: mockanything scenario tool_call (it calls the first tool you pass)."
+  - "Errors on demand: rate_limit, insufficient_quota, context_length_exceeded, server_error. Streaming (stream: true) is not supported yet and returns a clear error."
+  - "Embeddings are short fixed vectors (8 numbers), not real embeddings."
+snippets:
+  node: |
+    import OpenAI from "openai";
+    const openai = new OpenAI({ apiKey: "sk-mockanything", baseURL: "{{baseUrl}}/v1" });
+  python: |
+    from openai import OpenAI
+    client = OpenAI(api_key="sk-mockanything", base_url="{{baseUrl}}/v1")
+  env: |
+    OPENAI_API_KEY=sk-mockanything
+    OPENAI_BASE_URL={{baseUrl}}/v1
+conventions:
+  timestamps: unix
+  list: { object: list, data: "{{$items}}", has_more: "{{$hasMore}}" }
+  listStyle: { kind: cursor, limitParam: limit, afterParam: after, defaultLimit: 20, maxLimit: 100, order: desc }
+  error: { error: { message: "{{$message}}", type: "{{$type}}", param: "{{$param}}", code: "{{$code}}" } }
+  errors:
+    notFound: { status: 404, message: "No {{$resource}} found with id '{{$id}}'.", type: invalid_request_error, code: not_found }
+    unauthorized: { status: 401, message: "You didn't provide an API key. Any key works with this twin, e.g. sk-mockanything.", type: invalid_request_error }
+    missingParam: { status: 400, message: "Missing required parameter: '{{$param}}'.", type: invalid_request_error, code: missing_required_parameter }
+    rateLimited: { status: 429, message: "Rate limit reached. Please try again later.", type: requests, code: rate_limit_exceeded }
+    serverError: { status: 500, message: "The server had an error while processing your request.", type: server_error }
+
+resources:
+  chat_completions:
+    singular: chat completion
+    id: { style: prefixed, prefix: chatcmpl-, length: 29 }
+    required: [model, messages]
+    accept: [model, metadata, store]
+    hidden: [messages]
+    defaults:
+      object: chat.completion
+      created: "{{nowUnix}}"
+      model: "{{body.model}}"
+      choices:
+        - index: 0
+          message: { role: assistant, content: "[mock] This is a canned reply from the Mock Anything OpenAI twin.", refusal: null, annotations: [] }
+          logprobs: null
+          finish_reason: stop
+      usage: { prompt_tokens: 12, completion_tokens: 14, total_tokens: 26 }
+      service_tier: default
+      system_fingerprint: fp_mockanything
+  responses:
+    singular: response
+    id: { style: prefixed, prefix: resp_, length: 32 }
+    required: [model]
+    accept: [model, metadata, previous_response_id, instructions]
+    defaults:
+      object: response
+      created_at: "{{nowUnix}}"
+      status: completed
+      model: "{{body.model}}"
+      error: null
+      incomplete_details: null
+      output:
+        - type: message
+          id: "{{newId('msg_', 32)}}"
+          status: completed
+          role: assistant
+          content:
+            - { type: output_text, text: "[mock] This is a canned reply from the Mock Anything OpenAI twin.", annotations: [] }
+      usage: { input_tokens: 12, output_tokens: 14, total_tokens: 26 }
+  models:
+    singular: model
+    sample: true
+    id: { style: prefixed, prefix: mock-model-, length: 6 }
+    defaults: { object: model, created: 1700000000, owned_by: system }
+
+scenarios:
+  tool_call:
+    description: The reply calls the first tool in the request instead of answering.
+    on: chat_completions.create
+    set:
+      choices:
+        - index: 0
+          message:
+            role: assistant
+            content: null
+            refusal: null
+            tool_calls:
+              - id: "{{newId('call_', 24)}}"
+                type: function
+                function: { name: "{{body.tools.0.function.name ?? 'tool'}}", arguments: "{}" }
+          logprobs: null
+          finish_reason: tool_calls
+  rate_limit:
+    description: 429 rate_limit_exceeded.
+    on: chat_completions.create
+    error: { status: 429, message: "Rate limit reached for requests. Please try again later.", type: requests, code: rate_limit_exceeded }
+  insufficient_quota:
+    description: 429 insufficient_quota (out of credit).
+    on: chat_completions.create
+    error: { status: 429, message: "You exceeded your current quota, please check your plan and billing details.", type: insufficient_quota, code: insufficient_quota }
+  context_length_exceeded:
+    description: 400 context_length_exceeded.
+    on: chat_completions.create
+    error: { status: 400, message: "This model's maximum context length was exceeded. Please reduce the length of the messages.", type: invalid_request_error, param: messages, code: context_length_exceeded }
+  server_error:
+    description: 500 from the API.
+    on: chat_completions.create
+    error: { status: 500, message: "The server had an error while processing your request.", type: server_error }
+
+operations:
+  - method: POST
+    path: /chat/completions
+    action: create
+    resource: chat_completions
+    require:
+      - when: { not: { path: body.stream, truthy: true } }
+        error: { status: 400, message: "[mock] Streaming (stream: true) isn't supported by the Mock Anything OpenAI twin yet. Call without stream.", type: invalid_request_error, param: stream, code: unsupported_parameter }
+  - { method: GET, path: /chat/completions, action: list, resource: chat_completions }
+  - { method: GET, path: "/chat/completions/{completion_id}", action: read, resource: chat_completions }
+  - { method: DELETE, path: "/chat/completions/{completion_id}", action: delete, resource: chat_completions, response: { body: { object: chat.completion.deleted, id: "{{obj.id}}", deleted: true } } }
+  - method: POST
+    path: /responses
+    action: create
+    resource: responses
+    require:
+      - when: { not: { path: body.stream, truthy: true } }
+        error: { status: 400, message: "[mock] Streaming (stream: true) isn't supported by the Mock Anything OpenAI twin yet. Call without stream.", type: invalid_request_error, param: stream, code: unsupported_parameter }
+  - { method: GET, path: "/responses/{response_id}", action: read, resource: responses }
+  - { method: DELETE, path: "/responses/{response_id}", action: delete, resource: responses, response: { body: { object: response.deleted, id: "{{obj.id}}", deleted: true } } }
+  - method: POST
+    path: /embeddings
+    action: static
+    require:
+      - when: { path: body.input, exists: true }
+        error: { status: 400, message: "Missing required parameter: 'input'.", type: invalid_request_error, param: input, code: missing_required_parameter }
+    response:
+      body:
+        object: list
+        data:
+          - { object: embedding, index: 0, embedding: [0.0123, -0.0456, 0.0789, -0.0012, 0.0345, -0.0678, 0.0901, -0.0234] }
+        model: "{{body.model}}"
+        usage: { prompt_tokens: 8, total_tokens: 8 }
+  - { method: GET, path: /models, action: list, resource: models }
+  - { method: GET, path: "/models/{model}", action: read, resource: models }

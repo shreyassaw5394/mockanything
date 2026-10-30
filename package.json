@@ -29,6 +29,7 @@
     "dist",
     "packs",
     "skills",
+    "registry",
     "README.md",
     "LICENSE",
     "NOTICE",
@@ -52,6 +53,7 @@
   "devDependencies": {
     "@octokit/rest": "^22.0.1",
     "@types/node": "^26.6.5",
+    "openai": "^7.45.1",
     "oxlint": "^1.89.0",
     "resend": "^6.34.1",
     "stripe": "^23.0.1",

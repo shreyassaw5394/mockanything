@@ -212,7 +212,9 @@ export function ingestOpenApi(doc: unknown, sourceUrl?: string): IngestResult {
     const itemParam = group.find((g) => g.idParam)?.idParam;
     const idField = props.id ? "id" : (itemParam && Object.keys(props).find((k) => k.toLowerCase() === itemParam.toLowerCase())) || (props.uuid ? "uuid" : "id");
     const idDef = inferId(R, props[idField], idField);
-    const scope = [...new Set(group.flatMap((g) => (g.collectionPath ?? "").split("/").filter(isParam).map(paramName)))];
+    // a parent param named like this resource's own id param (`/artists/{id}/albums` next to `/albums/{id}`) is ambiguous: don't scope by it
+    const ownIdParams = new Set(group.map((g) => g.idParam).filter(Boolean) as string[]);
+    const scope = [...new Set(group.flatMap((g) => (g.collectionPath ?? "").split("/").filter(isParam).map(paramName)))].filter((p) => !ownIdParams.has(p));
 
     const defaults: Record<string, Template> = {};
     const synth = synthesize(R, objSchema, 0, new Set()) as Record<string, Json> | null;
@@ -433,6 +435,14 @@ export function ingestOpenApi(doc: unknown, sourceUrl?: string): IngestResult {
   for (const r of Object.values(resources)) {
     if (r.required) r.required = r.required.map((f) => bodyMap[f] ?? f);
     if (r.types) for (const [from, to] of Object.entries(bodyMap)) if (r.types[from] && !r.types[to]) r.types[to] = r.types[from]!;
+  }
+
+  // resources the API never lets you create are read-only data: serve made-up samples instead of empty results
+  for (const [k, r] of Object.entries(resources)) {
+    if (!operations.some((o) => o.resource === k && o.action === "create") && operations.some((o) => o.resource === k && (o.action === "read" || o.action === "list"))) {
+      r.sample = true;
+      guesses.push(`${k}: read-only in the spec, so reads and lists return made-up sample objects.`);
+    }
   }
 
   const def: TwinDefinition = {
@@ -803,7 +813,10 @@ function inferErrorTemplate(R: Resolver, ops: Record<string, unknown>[], isV3: b
   }
   const best = [...counts.values()].sort((a, b) => b.n - a.n)[0];
   if (!best) return { error: { message: "{{$message}}", code: "{{$code}}" } };
-  const tpl = synthesize(R, best.schema, 0, new Set()) as Record<string, Json>;
+  const synth = synthesize(R, best.schema, 0, new Set());
+  // some specs give an error example as a string of JSON rather than an object
+  if (!synth || typeof synth !== "object" || Array.isArray(synth)) return { error: { message: "{{$message}}", code: "{{$code}}" } };
+  const tpl = synth as Record<string, Json>;
   let placed = false;
   const fill = (o: Record<string, Json>, depth: number) => {
     for (const k of Object.keys(o)) {

@@ -62,4 +62,6 @@ Minimal example:
   "webhooks": { "signing": { "scheme": "hmac-sha256-hex", "header": "x-acme-signature" }, "envelope": { "event": "{{$type}}", "data": "{{$object}}" } }
 }
 
-Then call twin_start with { "definition": <your JSON> }. If it is rejected, the error lists what to fix.`;
+Then start it. With the MCP server: twin_start with { "definition": <your JSON> }.
+From a shell: save it as twin.json, check it with \`npx mockanything validate twin.json\`, then run \`npx mockanything twin.json\`.
+If it is rejected, the error lists what to fix.`;

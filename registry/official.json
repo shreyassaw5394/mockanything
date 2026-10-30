@@ -1,0 +1,370 @@
+{
+ "note": "Links to providers' own published API descriptions, fetched at runtime on the user's machine and cached there. Nothing here is a copy of a spec. Checked 2026-10-29.",
+ "apis": [
+  {
+   "name": "sendgrid",
+   "title": "Twilio SendGrid (Mail Send)",
+   "url": "https://raw.githubusercontent.com/twilio/sendgrid-oai/main/spec/json/tsg_mail_v3.json",
+   "source": "github.com/twilio/sendgrid-oai",
+   "license": "MIT",
+   "notes": "Mail send only; other SendGrid products are separate specs."
+  },
+  {
+   "name": "square",
+   "title": "Square",
+   "url": "https://raw.githubusercontent.com/square/connect-api-specification/master/api.json",
+   "source": "github.com/square/connect-api-specification",
+   "license": "Apache-2.0"
+  },
+  {
+   "name": "paypal",
+   "title": "PayPal (Orders v2)",
+   "url": "https://raw.githubusercontent.com/paypal/paypal-rest-api-specifications/main/openapi/checkout_orders_v2.json",
+   "source": "github.com/paypal/paypal-rest-api-specifications",
+   "license": "Apache-2.0",
+   "notes": "Orders v2; other PayPal products are separate specs."
+  },
+  {
+   "name": "plaid",
+   "title": "Plaid",
+   "url": "https://raw.githubusercontent.com/plaid/plaid-openapi/master/2020-09-14.yml",
+   "source": "github.com/plaid/plaid-openapi"
+  },
+  {
+   "name": "adyen",
+   "title": "Adyen Checkout",
+   "url": "https://raw.githubusercontent.com/Adyen/adyen-openapi/main/json/CheckoutService-v72.json",
+   "source": "github.com/Adyen/adyen-openapi",
+   "license": "MIT"
+  },
+  {
+   "name": "mollie",
+   "title": "Mollie",
+   "url": "https://raw.githubusercontent.com/mollie/openapi/main/specs.yaml",
+   "source": "github.com/mollie/openapi",
+   "license": "CC-BY-NC-SA-4.0"
+  },
+  {
+   "name": "paddle",
+   "title": "Paddle Billing",
+   "url": "https://raw.githubusercontent.com/PaddleHQ/paddle-openapi/main/v1/openapi.yaml",
+   "source": "github.com/PaddleHQ/paddle-openapi",
+   "license": "Apache-2.0"
+  },
+  {
+   "name": "gitlab",
+   "title": "GitLab",
+   "url": "https://gitlab.com/gitlab-org/gitlab/-/raw/master/doc/api/openapi/openapi_v3.yaml",
+   "source": "gitlab.com/gitlab-org/gitlab",
+   "license": "MIT"
+  },
+  {
+   "name": "bitbucket",
+   "title": "Bitbucket Cloud",
+   "url": "https://dac-static.atlassian.com/cloud/bitbucket/swagger.v3.json",
+   "source": "developer.atlassian.com"
+  },
+  {
+   "name": "jira",
+   "title": "Jira Cloud Platform",
+   "url": "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json",
+   "source": "developer.atlassian.com",
+   "aliases": [
+    "atlassian"
+   ]
+  },
+  {
+   "name": "confluence",
+   "title": "Confluence Cloud",
+   "url": "https://developer.atlassian.com/cloud/confluence/swagger.v3.json",
+   "source": "developer.atlassian.com"
+  },
+  {
+   "name": "trello",
+   "title": "Trello",
+   "url": "https://developer.atlassian.com/cloud/trello/swagger.v3.json",
+   "source": "developer.atlassian.com"
+  },
+  {
+   "name": "discord",
+   "title": "Discord",
+   "url": "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json",
+   "source": "github.com/discord/discord-api-spec",
+   "license": "MIT"
+  },
+  {
+   "name": "notion",
+   "title": "Notion",
+   "url": "https://raw.githubusercontent.com/makenotion/notion-mcp-server/main/scripts/notion-openapi.json",
+   "source": "github.com/makenotion/notion-mcp-server",
+   "license": "MIT",
+   "notes": "A subset of the API that Notion publishes for its MCP server."
+  },
+  {
+   "name": "asana",
+   "title": "Asana",
+   "url": "https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml",
+   "source": "github.com/Asana/openapi"
+  },
+  {
+   "name": "box",
+   "title": "Box Platform",
+   "url": "https://raw.githubusercontent.com/box/box-openapi/en/openapi.json",
+   "source": "github.com/box/box-openapi",
+   "license": "Apache-2.0"
+  },
+  {
+   "name": "hubspot",
+   "title": "HubSpot CRM Contacts",
+   "url": "https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/main/PublicApiSpecs/CRM/Contacts/Rollouts/424/2026-09/contacts.json",
+   "source": "github.com/HubSpot/HubSpot-public-api-spec-collection",
+   "notes": "Contacts only; other HubSpot APIs are separate specs."
+  },
+  {
+   "name": "intercom",
+   "title": "Intercom",
+   "url": "https://raw.githubusercontent.com/intercom/Intercom-OpenAPI/main/descriptions/2.11/api.intercom.io.yaml",
+   "source": "github.com/intercom/Intercom-OpenAPI",
+   "license": "MIT"
+  },
+  {
+   "name": "zendesk",
+   "title": "Zendesk Support",
+   "url": "https://developer.zendesk.com/zendesk/oas.yaml",
+   "source": "developer.zendesk.com"
+  },
+  {
+   "name": "klaviyo",
+   "title": "Klaviyo",
+   "url": "https://raw.githubusercontent.com/klaviyo/openapi/main/openapi/stable.json",
+   "source": "github.com/klaviyo/openapi",
+   "license": "MIT"
+  },
+  {
+   "name": "brevo",
+   "title": "Brevo",
+   "url": "https://api.brevo.com/v3/swagger_definition_v3.yml",
+   "source": "api.brevo.com"
+  },
+  {
+   "name": "pipedrive",
+   "title": "Pipedrive",
+   "url": "https://developers.pipedrive.com/docs/api/v1/openapi.yaml",
+   "source": "developers.pipedrive.com"
+  },
+  {
+   "name": "mux",
+   "title": "Mux",
+   "url": "https://www.mux.com/api-spec.json",
+   "source": "mux.com"
+  },
+  {
+   "name": "cloudflare",
+   "title": "Cloudflare",
+   "url": "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json",
+   "source": "github.com/cloudflare/api-schemas",
+   "license": "BSD-3-Clause"
+  },
+  {
+   "name": "digitalocean",
+   "title": "DigitalOcean",
+   "url": "https://api-engineering.nyc3.cdn.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml",
+   "source": "github.com/digitalocean/openapi",
+   "license": "Apache-2.0",
+   "aliases": [
+    "do"
+   ]
+  },
+  {
+   "name": "vercel",
+   "title": "Vercel",
+   "url": "https://openapi.vercel.sh/",
+   "source": "openapi.vercel.sh"
+  },
+  {
+   "name": "netlify",
+   "title": "Netlify",
+   "url": "https://raw.githubusercontent.com/netlify/open-api/master/swagger.yml",
+   "source": "github.com/netlify/open-api",
+   "license": "MIT"
+  },
+  {
+   "name": "render",
+   "title": "Render",
+   "url": "https://api-docs.render.com/openapi/render-public-api-1.json",
+   "source": "api-docs.render.com"
+  },
+  {
+   "name": "hetzner",
+   "title": "Hetzner Cloud",
+   "url": "https://docs.hetzner.cloud/cloud.spec.json",
+   "source": "docs.hetzner.cloud"
+  },
+  {
+   "name": "linode",
+   "title": "Linode",
+   "url": "https://raw.githubusercontent.com/linode/linode-api-docs/development/openapi.json",
+   "source": "github.com/linode/linode-api-docs",
+   "license": "Apache-2.0"
+  },
+  {
+   "name": "neon",
+   "title": "Neon",
+   "url": "https://neon.tech/api_spec/release/v2.json",
+   "source": "neon.tech"
+  },
+  {
+   "name": "supabase",
+   "title": "Supabase Management API",
+   "url": "https://api.supabase.com/api/v1-json",
+   "source": "api.supabase.com",
+   "notes": "Management API only."
+  },
+  {
+   "name": "clerk",
+   "title": "Clerk Backend API",
+   "url": "https://raw.githubusercontent.com/clerk/openapi-specs/main/bapi/2026-08-20.yml",
+   "source": "github.com/clerk/openapi-specs",
+   "license": "MIT"
+  },
+  {
+   "name": "auth0",
+   "title": "Auth0 Management API",
+   "url": "https://auth0.com/docs/api/management/openapi.json",
+   "source": "auth0.com/docs"
+  },
+  {
+   "name": "okta",
+   "title": "Okta Management",
+   "url": "https://raw.githubusercontent.com/okta/okta-management-openapi-spec/master/dist/current/management-minimal.yaml",
+   "source": "github.com/okta/okta-management-openapi-spec"
+  },
+  {
+   "name": "twitter",
+   "title": "X API v2",
+   "url": "https://api.x.com/2/openapi.json",
+   "source": "api.x.com",
+   "aliases": [
+    "x"
+   ]
+  },
+  {
+   "name": "spotify",
+   "title": "Spotify Web API",
+   "url": "https://developer.spotify.com/reference/web-api/open-api-schema.yaml",
+   "source": "developer.spotify.com"
+  },
+  {
+   "name": "algolia",
+   "title": "Algolia Search",
+   "url": "https://raw.githubusercontent.com/algolia/api-clients-automation/main/specs/bundled/search.yml",
+   "source": "github.com/algolia/api-clients-automation",
+   "license": "MIT"
+  },
+  {
+   "name": "sentry",
+   "title": "Sentry",
+   "url": "https://raw.githubusercontent.com/getsentry/sentry-api-schema/main/openapi-derefed.json",
+   "source": "github.com/getsentry/sentry-api-schema"
+  },
+  {
+   "name": "pagerduty",
+   "title": "PagerDuty",
+   "url": "https://raw.githubusercontent.com/PagerDuty/api-schema/main/reference/REST/openapiv3.json",
+   "source": "github.com/PagerDuty/api-schema"
+  },
+  {
+   "name": "datadog",
+   "title": "Datadog (v2)",
+   "url": "https://raw.githubusercontent.com/DataDog/datadog-api-client-typescript/master/.generator/schemas/v2/openapi.yaml",
+   "source": "github.com/DataDog/datadog-api-client-typescript",
+   "license": "Apache-2.0"
+  },
+  {
+   "name": "vonage",
+   "title": "Vonage SMS",
+   "url": "https://developer.vonage.com/api/v1/developer/api/file/sms?format=json",
+   "source": "developer.vonage.com"
+  },
+  {
+   "name": "pinecone",
+   "title": "Pinecone (control plane)",
+   "url": "https://raw.githubusercontent.com/pinecone-io/pinecone-api/main/2026-07/db_control_2026-07.oas.yaml",
+   "source": "github.com/pinecone-io/pinecone-api"
+  },
+  {
+   "name": "mistral",
+   "title": "Mistral AI",
+   "url": "https://docs.mistral.ai/openapi.yaml",
+   "source": "docs.mistral.ai"
+  },
+  {
+   "name": "cohere",
+   "title": "Cohere",
+   "url": "https://raw.githubusercontent.com/cohere-ai/cohere-developer-experience/main/cohere-openapi.yaml",
+   "source": "github.com/cohere-ai/cohere-developer-experience"
+  },
+  {
+   "name": "replicate",
+   "title": "Replicate",
+   "url": "https://api.replicate.com/openapi.json",
+   "source": "api.replicate.com"
+  },
+  {
+   "name": "huggingface",
+   "title": "Hugging Face Hub",
+   "url": "https://huggingface.co/.well-known/openapi.json",
+   "source": "huggingface.co",
+   "aliases": [
+    "hf",
+    "hugging-face"
+   ]
+  },
+  {
+   "name": "elevenlabs",
+   "title": "ElevenLabs",
+   "url": "https://api.elevenlabs.io/openapi.json",
+   "source": "api.elevenlabs.io"
+  },
+  {
+   "name": "openrouter",
+   "title": "OpenRouter",
+   "url": "https://openrouter.ai/openapi.json",
+   "source": "openrouter.ai"
+  },
+  {
+   "name": "exa",
+   "title": "Exa Search",
+   "url": "https://raw.githubusercontent.com/exa-labs/openapi-spec/master/exa-openapi-spec.yaml",
+   "source": "github.com/exa-labs/openapi-spec"
+  },
+  {
+   "name": "firecrawl",
+   "title": "Firecrawl",
+   "url": "https://raw.githubusercontent.com/firecrawl/firecrawl/main/apps/api/openapi.json",
+   "source": "github.com/firecrawl/firecrawl",
+   "license": "AGPL-3.0"
+  },
+  {
+   "name": "xero",
+   "title": "Xero Accounting",
+   "url": "https://raw.githubusercontent.com/XeroAPI/Xero-OpenAPI/master/xero_accounting.yaml",
+   "source": "github.com/XeroAPI/Xero-OpenAPI",
+   "license": "MIT"
+  },
+  {
+   "name": "svix",
+   "title": "Svix",
+   "url": "https://raw.githubusercontent.com/svix/svix-webhooks/main/server/openapi.json",
+   "source": "github.com/svix/svix-webhooks",
+   "license": "MIT"
+  },
+  {
+   "name": "lob",
+   "title": "Lob",
+   "url": "https://raw.githubusercontent.com/lob/lob-openapi/main/dist/lob-api-bundled.yml",
+   "source": "github.com/lob/lob-openapi",
+   "license": "MIT"
+  }
+ ]
+}

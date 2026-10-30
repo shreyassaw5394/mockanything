@@ -6,6 +6,7 @@ import { applyOverrides, listPacks, loadDefinitionFile, parseDocument } from "..
 import { resolveSource, DocsPageError, type Resolved } from "../ingest/resolve.js";
 import { VERSION } from "../version.js";
 import { defaultStatePath, insideGitRepo } from "../engine/state.js";
+import { control, findRunning, listRunning, register } from "../engine/registry.js";
 
 const tty = process.stdout.isTTY;
 const c = {
@@ -25,6 +26,19 @@ Usage
   mockanything validate <file>       check a twin definition
   mockanything env <api>             config snippets for pointing your app at the twin
   mockanything verify <api>          measure how closely a twin matches the real API (your test key)
+
+Drive a running twin (from a script or an agent; --port picks one when several run)
+  mockanything running               twins running on this machine
+  mockanything events                recent requests and webhooks (secrets masked)
+  mockanything state                 objects the twin holds
+  mockanything scenario [name]       list scenarios, or force one for the next matching call (--times n)
+  mockanything chaos <modes|off>     inject failures now (--chaos-rate, --seed)
+  mockanything clock <duration>      move the twin's clock forward (90s, 15m, 2h, 3d)
+  mockanything reset                 forget everything
+
+Build a twin from documentation (no spec)
+  mockanything docs <url>            the page as text (or the spec it links to), for an agent to read
+  mockanything guide                 the twin definition format; save one as twin.json, then: mockanything twin.json
   mockanything mcp                   run the MCP server (for Claude Code, Cursor and other agents)
 
 Examples
@@ -112,6 +126,10 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
     }
   }
   if (!t) fail(`Could not start: ${(lastErr as Error)?.message ?? "no free port"}`);
+  let unregister = () => {};
+  try { unregister = register({ port: t.port, url: t.url, token: t.token, id: r.def.id, title: r.def.title, basePath: r.def.basePath ?? "", pid: process.pid, startedAt: new Date().toISOString() }); }
+  catch { /* the twin still works; only the control commands won't find it */ }
+  process.on("exit", () => unregister());
 
   if (values.json) {
     process.stdout.write(JSON.stringify({ id: r.def.id, title: r.def.title, origin: r.origin, url: t.url, dashboard: t.dashboardUrl, webhookSecret: t.twin.webhookSecret, token: t.token, state: t.state ?? null }) + "\n");
@@ -139,9 +157,63 @@ async function start(source: string, values: Record<string, unknown>): Promise<v
     process.stdout.write(lines.join("\n") + "\n");
   }
 
-  const stop = async () => { await t!.close(); process.exit(0); };
+  const stop = async () => { unregister(); await t!.close(); process.exit(0); };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
+}
+
+function parseDuration(s: string | undefined): number {
+  const m = String(s ?? "").trim().match(/^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d)?$/i);
+  if (!m) fail("usage: mockanything clock <duration>, e.g. 90s, 15m, 2h, 3d");
+  const n = Number(m[1]);
+  return Math.round(n * ({ ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[(m[2] ?? "ms").toLowerCase() as "ms"] ?? 1));
+}
+
+async function drive(cmd: string, arg: string | undefined, values: Record<string, unknown>): Promise<void> {
+  let e;
+  try { e = findRunning(values.port ? Number(values.port) : undefined); } catch (err) { fail((err as Error).message); }
+  const out = (v: unknown): void => { process.stdout.write(JSON.stringify(v, null, 2) + "\n"); };
+  try {
+    switch (cmd) {
+      case "events": {
+        const limit = Math.max(1, Math.min(200, Number(values.limit ?? 20) || 20));
+        const [reqs, dels] = await Promise.all([control(e, "GET", "/requests"), control(e, "GET", "/deliveries")]) as [Record<string, unknown>[], Record<string, unknown>[]];
+        if (values.json) return out({ requests: reqs.slice(-limit), deliveries: dels.slice(-limit) });
+        const rows = [
+          ...reqs.slice(-limit).map((r) => ({ at: Number(r.at), line: `${String(r.status).padStart(3)} ${String(r.method).padEnd(6)} ${r.path}${r.scenario ? c.yellow(` [${r.scenario}]`) : ""}${r.chaos ? c.yellow(` [chaos: ${r.chaos}]`) : ""}${r.warning ? c.red(` ${r.warning}`) : ""}` })),
+          ...dels.slice(-limit).map((d) => ({ at: Number(d.at), line: c.dim(`  → webhook ${d.type} to ${d.url}: ${d.status ?? d.error ?? "pending"}${d.duplicate ? " (duplicate)" : ""}`) })),
+        ].sort((a, b) => a.at - b.at);
+        process.stdout.write(rows.length ? rows.map((r) => r.line).join("\n") + "\n" : "No requests yet.\n");
+        return;
+      }
+      case "state": return out(await control(e, "GET", "/state"));
+      case "scenario": {
+        if (!arg) {
+          const info = await control(e, "GET", "/info") as { scenarios: { name: string; on: string; description: string; trigger: string }[] };
+          if (values.json) return out(info.scenarios);
+          if (!info.scenarios.length) { process.stdout.write(`${e.title} has no named scenarios. Use: mockanything chaos 5xx,429\n`); return; }
+          for (const s of info.scenarios) process.stdout.write(`  ${s.name.padEnd(28)} ${c.dim(`${s.on} · ${s.description}`)}\n`);
+          return;
+        }
+        await control(e, "POST", "/scenario", { name: arg, times: Number(values.times ?? 1) || 1 });
+        process.stdout.write(`The next matching call on ${e.title} will use "${arg}".\n`);
+        return;
+      }
+      case "chaos": {
+        if (!arg) fail("usage: mockanything chaos <timeout,5xx,slow,429,dup-webhooks,out-of-order | all | off>");
+        const body = arg === "off" ? { off: true } : { modes: arg === "all" ? "" : arg, rate: values["chaos-rate"], seed: values.seed };
+        const r = await control(e, "POST", "/chaos", body) as { chaos: { modes: string[]; rate: number; seed: number } | null };
+        process.stdout.write(r.chaos ? `Chaos on: ${r.chaos.modes.join(", ")}, ${Math.round(r.chaos.rate * 100)}% of calls, seed ${r.chaos.seed}.\n` : "Chaos off.\n");
+        return;
+      }
+      case "clock": {
+        const r = await control(e, "POST", "/clock", { advanceMs: parseDuration(arg) }) as { nowMs: number };
+        process.stdout.write(`${e.title} twin's clock is now ${new Date(r.nowMs).toISOString()}.\n`);
+        return;
+      }
+      case "reset": await control(e, "POST", "/reset"); process.stdout.write(`${e.title} twin reset.\n`); return;
+    }
+  } catch (err) { fail((err as Error).message); }
 }
 
 async function verify(source: string, values: Record<string, unknown>): Promise<void> {
@@ -205,6 +277,8 @@ async function main(): Promise<void> {
       against: { type: "string" },
       pace: { type: "string" },
       "max-calls": { type: "string" },
+      limit: { type: "string" },
+      times: { type: "string" },
       out: { type: "string", multiple: true },
       json: { type: "boolean" },
       help: { type: "boolean", short: "h" },
@@ -227,7 +301,14 @@ async function main(): Promise<void> {
         process.stdout.write(`  ${p.id.padEnd(12)} ${f}\n  ${"".padEnd(12)} ${c.dim(p.description ?? p.title)}\n`);
       }
       process.stdout.write(c.dim(`\nMatch scores come from \`mockanything verify\` against each provider's sandbox.\n`));
-      process.stdout.write(`\nAny other API works too: ${c.bold("mockanything <name>")} looks it up in the public APIs.guru directory,\nor pass an OpenAPI file or URL.\n`);
+      const { officialSpecs } = await import("../ingest/resolve.js");
+      const official = officialSpecs();
+      if (official.length) {
+        process.stdout.write(`\n${c.bold("From the provider's own spec")} (${official.length}, fetched when you start one)\n`);
+        const names = official.map((o) => o.name);
+        for (let i = 0; i < names.length; i += 6) process.stdout.write(`  ${names.slice(i, i + 6).map((n) => n.padEnd(13)).join("")}\n`);
+      }
+      process.stdout.write(`\nAny other API works too: ${c.bold("mockanything <name>")} looks it up in the public APIs.guru directory,\nor pass an OpenAPI file or URL, or a HAR recording.\n`);
       return;
     }
     case "inspect": {
@@ -265,6 +346,28 @@ async function main(): Promise<void> {
     case "verify": {
       if (!arg) fail("usage: mockanything verify <api> --key <test key> [--suite file] [--against url] [--out report.md]");
       await verify(arg, values as Record<string, unknown>);
+      return;
+    }
+    case "running": {
+      const all = listRunning();
+      if (values.json) { process.stdout.write(JSON.stringify(all.map(({ token: _t, ...e }) => e)) + "\n"); return; }
+      if (!all.length) { process.stdout.write("No twins running. Start one: mockanything <api>\n"); return; }
+      for (const e of all) process.stdout.write(`  ${e.id.padEnd(14)} ${c.green(e.url + e.basePath)}  ${c.dim(`pid ${e.pid}`)}\n`);
+      return;
+    }
+    case "events": case "state": case "scenario": case "chaos": case "clock": case "reset": {
+      await drive(cmd, arg, values as Record<string, unknown>);
+      return;
+    }
+    case "guide": {
+      const { DEFINITION_GUIDE } = await import("../mcp/guide.js");
+      process.stdout.write(DEFINITION_GUIDE + "\n");
+      return;
+    }
+    case "docs": {
+      if (!arg || !/^https?:\/\//i.test(arg)) fail("usage: mockanything docs <https://… documentation page>");
+      const { readDocs } = await import("../mcp/server.js");
+      process.stdout.write(await readDocs(arg) + "\n");
       return;
     }
     case "mcp": {

@@ -139,6 +139,8 @@ export interface ResourceDef {
   filters?: Record<string, string | { field: string; default?: string; all?: string }>;
   /** Hidden from responses (internal bookkeeping). */
   hidden?: string[];
+  /** Read-only in the real API (no create call): reads and lists return made-up sample objects shaped by `defaults`. */
+  sample?: boolean;
   /** Fields that must be unique across objects (checked on create). */
   unique?: { field: string; error: ErrorSpec }[];
 }

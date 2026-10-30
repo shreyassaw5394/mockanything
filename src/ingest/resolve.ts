@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { homedir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
 import { createHash } from "node:crypto";
-import { findPack, listPacks, parseDocument } from "../engine/load.js";
+import { findPack, listPacks, packageRoot, parseDocument } from "../engine/load.js";
 import { validateDefinition } from "../engine/schema.js";
 import type { TwinDefinition } from "../engine/types.js";
 import { isLoopbackUrl } from "../engine/util.js";
@@ -13,9 +13,26 @@ import { harToOpenApi, isHar } from "./har.js";
 export interface Resolved {
   def: TwinDefinition;
   report?: InferenceReport;
-  origin: "pack" | "definition" | "openapi-file" | "openapi-url" | "apis-guru" | "har";
+  origin: "pack" | "definition" | "openapi-file" | "openapi-url" | "apis-guru" | "har" | "official";
   detail: string;
   alternatives?: string[];
+}
+
+export interface OfficialSpec { name: string; title: string; url: string; source: string; license?: string; aliases?: string[]; notes?: string }
+
+let officialCache: OfficialSpec[] | null = null;
+/** Curated links to providers' own published specs (registry/official.json). Links only; specs are fetched at runtime. */
+export function officialSpecs(): OfficialSpec[] {
+  if (officialCache) return officialCache;
+  try {
+    const list = JSON.parse(readFileSync(join(packageRoot(), "registry", "official.json"), "utf8")) as { apis: OfficialSpec[] };
+    officialCache = list.apis.filter((a) => typeof a.url === "string" && a.url.startsWith("https://"));
+  } catch { officialCache = []; }
+  return officialCache;
+}
+export function findOfficial(name: string): OfficialSpec | null {
+  const n = name.toLowerCase();
+  return officialSpecs().find((a) => a.name === n || (a.aliases ?? []).includes(n)) ?? null;
 }
 
 export class DocsPageError extends Error {
@@ -53,7 +70,7 @@ function cachePath(key: string): string {
   return join(homeDir(), "cache", createHash("sha256").update(key).digest("hex").slice(0, 32));
 }
 
-async function cachedText(url: string, maxAgeMs: number): Promise<string> {
+export async function cachedText(url: string, maxAgeMs: number): Promise<string> {
   const p = cachePath(url);
   if (existsSync(p) && Date.now() - statSync(p).mtimeMs < maxAgeMs) return readFileSync(p, "utf8");
   const { text } = await fetchText(url);
@@ -126,7 +143,21 @@ export async function resolveSource(input: string): Promise<Resolved> {
     return fromDocument(parseDocument(text), trimmed, "openapi-url");
   }
 
-  // 4. any API name → public directory
+  // 4. a known API → the provider's own current spec (fetched from its source, never bundled)
+  const known = /^[a-z0-9][a-z0-9-]{0,60}$/i.test(trimmed) ? findOfficial(trimmed) : null;
+  if (known) {
+    try {
+      const text = await cachedText(known.url, 7 * DAY);
+      const r = fromDocument(parseDocument(text), known.url, "official");
+      return { ...r, detail: `${known.title} (the provider's published spec: ${known.source})` };
+    } catch (e) {
+      // the official source is unreachable or changed shape: fall back to the directory copy
+      try { const r = await resolveByName(trimmed); return { ...r, detail: `${r.detail}; the official spec failed: ${(e as Error).message.slice(0, 120)}` }; }
+      catch { throw e; }
+    }
+  }
+
+  // 5. any API name → public directory
   if (/^[a-z0-9][a-z0-9 ._:-]{0,80}$/i.test(trimmed)) return resolveByName(trimmed);
   throw new Error(`Don't know how to load "${trimmed}". Pass a pack name, an API name, an OpenAPI file, or a URL.`);
 }

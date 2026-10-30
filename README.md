@@ -43,6 +43,7 @@ Hand-tuned twins, checked against each provider's official SDK in our test suite
 | `twilio` | Send SMS, status callbacks (queued → sent → delivered), fetch, list, delete | `+15005550001` (invalid), `+15005550002` (unroutable), `+15005550004` (unsubscribed) … |
 | `resend` | Send, retrieve, list, schedule, cancel; delivery, bounce and complaint events | `delivered@resend.dev`, `bounced@resend.dev`, `complained@resend.dev` |
 | `github` | Repos, issues (open, edit, close, reopen), comments, pull requests (open, merge) | Any owner/repo works and starts empty |
+| `openai` | Chat completions, Responses API, embeddings, models. Replies are canned and start with `[mock]`; no model runs | Scenarios `tool_call`, `rate_limit`, `insufficient_quota`, `context_length_exceeded`, `server_error` |
 
 `mockanything env <pack>` prints the snippet for pointing the official SDK at the twin, for example:
 
@@ -58,7 +59,8 @@ Give Mock Anything an OpenAPI 3.x or Swagger 2.0 description (a file, a URL, or 
 - `/things/{id}/cancel`-style paths become state changes, matched to the object's `status` values;
 - nested paths are scoped (issues in one repo don't show up in another);
 - response envelopes, pagination style, error shape, auth and OAS 3.1 webhooks are read from the spec;
-- paths the spec doesn't describe still work as generic REST (marked with `x-mockanything-fallback`).
+- paths the spec doesn't describe still work as generic REST (marked with `x-mockanything-fallback`);
+- read-only resources (nothing in the API creates them) return made-up sample objects shaped by the spec, so lookups and lists aren't empty.
 
 See what was inferred, and change it:
 
@@ -66,6 +68,19 @@ See what was inferred, and change it:
 npx mockanything inspect ./openapi.yaml --out twin.yaml   # edit twin.yaml
 npx mockanything twin.yaml
 ```
+
+### How many APIs work?
+
+Measured on 2026-10-29 with `scripts/coverage.ts`, which builds a twin from each spec, creates objects, then calls every operation (up to 40 per API):
+
+| Source | APIs | Twin starts | Calls without a server error | Calls that succeed |
+|---|---|---|---|---|
+| Every API in the public APIs.guru directory | 2,528 | 2,528 | 37,770 of 37,770 | 90.2% |
+| Providers' own current specs (`mockanything list`) | 54 | 54 | 1,988 of 1,988 | 96.8% |
+
+The calls that don't succeed get proper errors, mostly "not found" for an id that was never created, or a missing parent object. Starting and answering is not the same as matching the real API; `verify` measures that.
+
+Popular APIs with a current official spec (OpenAI, Square, PayPal, Adyen, Discord, Jira, Cloudflare, Vercel, Supabase, Clerk, Hugging Face and more) are fetched from the provider's own source rather than the directory, which is often out of date. Run `mockanything list` for all of them.
 
 Twins built straight from the public Stripe, Twilio, GitHub and Resend specs, with no hand-tuning, pass the official SDKs' basic create/read/update/list/delete flows (`scripts/conformance.ts`).
 
@@ -81,7 +96,24 @@ Mock Anything rebuilds the endpoints, id formats, list shapes and status lifecyc
 
 No spec at all? Let your agent build one: the MCP tool `twin_from_docs` reads a documentation page and gives the agent a short format guide; the agent writes a twin definition and starts it with `twin_start`.
 
-## For agents (MCP)
+## For agents
+
+### As a skill (no setup beyond the file)
+
+Copy [`skills/mock-anything`](skills/mock-anything/SKILL.md) into `~/.claude/skills/` (or your agent's skills folder). Then tell the agent "mock Stripe", "test this against a fake Notion", or point it at a spec, a HAR file or a docs page. The skill uses only the command line: it starts a twin, points your app at it, and drives it:
+
+```bash
+npx mockanything events                  # requests and webhooks the twin saw
+npx mockanything state                   # objects it holds
+npx mockanything scenario card_declined  # force an edge case on the next call
+npx mockanything chaos 5xx,429           # failures (chaos off to stop)
+npx mockanything clock 3d                # move time forward
+npx mockanything reset
+```
+
+For an API with only a docs page, `npx mockanything docs <url>` gives the agent the page text and the twin format; the agent writes `twin.json`, checks it with `npx mockanything validate twin.json`, and starts it.
+
+### MCP
 
 ```bash
 claude mcp add mockanything -- npx -y mockanything mcp
@@ -119,6 +151,8 @@ mockanything inspect <api>         print the inferred definition (--out file.yam
 mockanything validate <file>       check a twin definition
 mockanything env <api>             config snippets
 mockanything verify <api>          how closely the twin matches the real API (your test key)
+mockanything running | events | state | scenario [name] | chaos <modes|off> | clock <duration> | reset
+mockanything docs <url> | guide    build a twin from a docs page
 mockanything mcp                   MCP server over stdio
 
 --port <n>  --webhook <url>  --allow-webhook-host <host>  --cors <origin>
