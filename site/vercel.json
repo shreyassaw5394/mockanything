@@ -5,8 +5,13 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/:path*",
-      "destination": "https://shipatmidnight.dev/mockanything/:path*",
+      "source": "/",
+      "destination": "https://shipatmidnight.dev/mockanything",
+      "permanent": true
+    },
+    {
+      "source": "/:path+",
+      "destination": "https://shipatmidnight.dev/mockanything/:path+",
       "permanent": true
     }
   ],
