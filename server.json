@@ -1,9 +1,12 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.shreyassaw5394/mockanything",
-  "description": "Local, stateful twins of any API (Stripe, Paystack, Twilio, any OpenAPI spec) for agents. No keys, no bill.",
+  "description": "Local, stateful twins of any API (Stripe, Twilio, any OpenAPI spec) for agents. No keys, no bill.",
   "status": "active",
-  "repository": { "url": "https://github.com/shreyassaw5394/mockanything", "source": "github" },
+  "repository": {
+    "url": "https://github.com/shreyassaw5394/mockanything",
+    "source": "github"
+  },
   "version": "0.2.0",
   "packages": [
     {
@@ -12,8 +15,15 @@
       "identifier": "@shipatmidnight/mockanything",
       "version": "0.2.0",
       "runtimeHint": "npx",
-      "transport": { "type": "stdio" },
-      "packageArguments": [{ "type": "positional", "value": "mcp" }]
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
     }
   ],
   "websiteUrl": "https://shipatmidnight.dev/mockanything"
