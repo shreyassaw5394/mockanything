@@ -9,12 +9,12 @@
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "mockanything",
+      "identifier": "@shipatmidnight/mockanything",
       "version": "0.2.0",
       "runtimeHint": "npx",
       "transport": { "type": "stdio" },
       "packageArguments": [{ "type": "positional", "value": "mcp" }]
     }
   ],
-  "websiteUrl": "https://mockanything.dev"
+  "websiteUrl": "https://shipatmidnight.dev/mockanything"
 }

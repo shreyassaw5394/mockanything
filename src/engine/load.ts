@@ -12,7 +12,7 @@ export function packageRoot(): string {
   for (let i = 0; i < 6; i++) {
     const pj = join(dir, "package.json");
     if (existsSync(pj)) {
-      try { if (JSON.parse(readFileSync(pj, "utf8")).name === "mockanything") return dir; } catch { /* keep walking */ }
+      try { if (JSON.parse(readFileSync(pj, "utf8")).name === "@shipatmidnight/mockanything") return dir; } catch { /* keep walking */ }
     }
     dir = dirname(dir);
   }

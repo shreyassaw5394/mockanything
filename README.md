@@ -5,7 +5,7 @@
 **A working twin of any API, running on your machine in one command. No keys, no sandbox sign-up, no bill.**
 
 ```bash
-npx mockanything stripe
+npx @shipatmidnight/mockanything stripe
 # → Stripe twin running at http://localhost:4010/v1
 ```
 
@@ -14,10 +14,10 @@ Point your app or agent at that URL instead of the real one and it behaves like 
 Mock Anything works with **any** API, not just a fixed list:
 
 ```bash
-npx mockanything stripe                          # a hand-tuned pack
-npx mockanything ./openapi.yaml                  # your own OpenAPI / Swagger file
-npx mockanything https://example.com/openapi.json
-npx mockanything slack                           # any name in the public APIs.guru directory (2,500+ APIs)
+npx @shipatmidnight/mockanything stripe                          # a hand-tuned pack
+npx @shipatmidnight/mockanything ./openapi.yaml                  # your own OpenAPI / Swagger file
+npx @shipatmidnight/mockanything https://example.com/openapi.json
+npx @shipatmidnight/mockanything slack                           # any name in the public APIs.guru directory (2,500+ APIs)
 ```
 
 ## Why
@@ -66,8 +66,8 @@ Give Mock Anything an OpenAPI 3.x or Swagger 2.0 description (a file, a URL, or 
 See what was inferred, and change it:
 
 ```bash
-npx mockanything inspect ./openapi.yaml --out twin.yaml   # edit twin.yaml
-npx mockanything twin.yaml
+npx @shipatmidnight/mockanything inspect ./openapi.yaml --out twin.yaml   # edit twin.yaml
+npx @shipatmidnight/mockanything twin.yaml
 ```
 
 ### How many APIs work?
@@ -90,7 +90,7 @@ Twins built straight from the public Stripe, Twilio, GitHub and Resend specs, wi
 Record your app talking to the real API (browser DevTools → Network → "Save all as HAR", or any proxy that writes HAR) and start a twin from the file:
 
 ```bash
-npx mockanything ./checkout.har
+npx @shipatmidnight/mockanything ./checkout.har
 ```
 
 Mock Anything rebuilds the endpoints, id formats, list shapes and status lifecycles it saw. It keeps field names and shapes only: header values, cookies, query values and free text from the recording are never copied into the twin, and emails, URLs and dates are replaced with made-up values.
@@ -104,26 +104,26 @@ No spec at all? Let your agent build one: the MCP tool `twin_from_docs` reads a 
 Copy [`skills/mock-anything`](skills/mock-anything/SKILL.md) into `~/.claude/skills/` (or your agent's skills folder). Then tell the agent "mock Stripe", "test this against a fake Notion", or point it at a spec, a HAR file or a docs page. The skill uses only the command line: it starts a twin, points your app at it, and drives it:
 
 ```bash
-npx mockanything events                  # requests and webhooks the twin saw
-npx mockanything state                   # objects it holds
-npx mockanything scenario card_declined  # force an edge case on the next call
-npx mockanything chaos 5xx,429           # failures (chaos off to stop)
-npx mockanything clock 3d                # move time forward
-npx mockanything reset
+npx @shipatmidnight/mockanything events                  # requests and webhooks the twin saw
+npx @shipatmidnight/mockanything state                   # objects it holds
+npx @shipatmidnight/mockanything scenario card_declined  # force an edge case on the next call
+npx @shipatmidnight/mockanything chaos 5xx,429           # failures (chaos off to stop)
+npx @shipatmidnight/mockanything clock 3d                # move time forward
+npx @shipatmidnight/mockanything reset
 ```
 
-For an API with only a docs page, `npx mockanything docs <url>` gives the agent the page text and the twin format; the agent writes `twin.json`, checks it with `npx mockanything validate twin.json`, and starts it.
+For an API with only a docs page, `npx @shipatmidnight/mockanything docs <url>` gives the agent the page text and the twin format; the agent writes `twin.json`, checks it with `npx @shipatmidnight/mockanything validate twin.json`, and starts it.
 
 ### MCP
 
 ```bash
-claude mcp add mockanything -- npx -y mockanything mcp
+claude mcp add mockanything -- npx -y @shipatmidnight/mockanything mcp
 ```
 
 Cursor, Windsurf and other MCP clients:
 
 ```json
-{ "mcpServers": { "mockanything": { "command": "npx", "args": ["-y", "mockanything", "mcp"] } } }
+{ "mcpServers": { "mockanything": { "command": "npx", "args": ["-y", "@shipatmidnight/mockanything", "mcp"] } } }
 ```
 
 Tools: `twin_start`, `twin_from_docs`, `twin_env`, `twin_events`, `twin_state`, `twin_scenario`, `twin_chaos`, `twin_webhook_add`, `twin_emit`, `twin_advance_clock`, `twin_reset`, `twin_stop`, `twin_list`, `packs_list`.
@@ -133,8 +133,8 @@ An agent can say "start a Stripe twin, build the checkout, then force a declined
 ## Keep data between restarts
 
 ```bash
-npx mockanything stripe --persist            # ~/.mockanything/state/stripe.json
-npx mockanything stripe --state ./twin.json  # or a file you choose
+npx @shipatmidnight/mockanything stripe --persist            # ~/.mockanything/state/stripe.json
+npx @shipatmidnight/mockanything stripe --state ./twin.json  # or a file you choose
 ```
 
 Objects, id counters, the test clock, the webhook secret and registered webhook endpoints are saved shortly after each change and when the twin stops. The file is readable by you only. Delete it (or press Reset in the dashboard) to start fresh. Agents get the same with `twin_start` and `persist: true`.
@@ -175,9 +175,9 @@ A twin is only as good as the facts it was built from. Packs cover the main flow
 `verify` measures it. It runs the same scripted calls against the twin and against the provider's real sandbox, using your own test-mode key, and compares status codes, field names, field types, id formats and error codes:
 
 ```bash
-npx mockanything verify stripe --key sk_test_...      # or set MOCKANYTHING_SANDBOX_KEY
-npx mockanything verify paystack --key sk_test_... --out report.md
-npx mockanything verify ./openapi.yaml --against https://api.example.com --key ...   # read-only list calls
+npx @shipatmidnight/mockanything verify stripe --key sk_test_...      # or set MOCKANYTHING_SANDBOX_KEY
+npx @shipatmidnight/mockanything verify paystack --key sk_test_... --out report.md
+npx @shipatmidnight/mockanything verify ./openapi.yaml --against https://api.example.com --key ...   # read-only list calls
 ```
 
 ```

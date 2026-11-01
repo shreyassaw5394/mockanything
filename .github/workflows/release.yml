@@ -41,8 +41,8 @@ jobs:
         # the very first version is published by hand (npm only allows trusted publishing once a package exists)
         run: |
           V=$(node -p "require('./package.json').version")
-          if [ "$(npm view "mockanything@$V" version 2>/dev/null)" = "$V" ]; then
-            echo "mockanything@$V is already on npm; skipping the publish"
+          if [ "$(npm view "@shipatmidnight/mockanything@$V" version 2>/dev/null)" = "$V" ]; then
+            echo "@shipatmidnight/mockanything@$V is already on npm; skipping the publish"
           else
             npm publish --access public --provenance
           fi
@@ -65,7 +65,7 @@ jobs:
         run: |
           V=$(node -p "require('./package.json').version")
           for i in $(seq 1 30); do
-            [ "$(npm view mockanything version 2>/dev/null)" = "$V" ] && { echo "npm has $V"; exit 0; }
+            [ "$(npm view @shipatmidnight/mockanything version 2>/dev/null)" = "$V" ] && { echo "npm has $V"; exit 0; }
             echo "waiting for npm ($i/30)"; sleep 20
           done
           echo "::warning::npm did not show $V in time; publishing to the registry anyway"

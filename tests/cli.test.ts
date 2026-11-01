@@ -71,7 +71,7 @@ describe("driving a running twin from the shell", () => {
 
   it("prints the definition guide", () => {
     const r = cli("guide");
-    expect(r.stdout).toContain("npx mockanything validate twin.json");
+    expect(r.stdout).toContain("npx @shipatmidnight/mockanything validate twin.json");
   });
 
   it("explains when no twin answers on a port", () => {
