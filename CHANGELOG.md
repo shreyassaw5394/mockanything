@@ -1,3 +1,8 @@
+## 0.2.1
+
+- Published as `@shipatmidnight/mockanything` (the command stays `mockanything`), with its listing in the MCP Registry.
+- The site moved to [shipatmidnight.dev/mockanything](https://shipatmidnight.dev/mockanything).
+
 ## 0.2.0
 
 First public release.
