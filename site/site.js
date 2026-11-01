@@ -164,7 +164,7 @@
   if (form) {
     const input = $("#api-name"), out = $("#blank-cmd"), btn = $("button", form);
     const clean = () => (input.value.trim().toLowerCase().replace(/[^a-z0-9._\-/:]/g, "") || "stripe");
-    const sync = () => { out.textContent = `npx mockanything ${clean()}`; };
+    const sync = () => { out.textContent = `npx @shipatmidnight/mockanything ${clean()}`; };
     input.addEventListener("input", sync);
     form.addEventListener("submit", async (e) => {
       e.preventDefault();

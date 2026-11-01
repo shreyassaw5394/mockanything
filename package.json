@@ -1,10 +1,10 @@
 {
-  "name": "mockanything",
+  "name": "@shipatmidnight/mockanything",
   "version": "0.2.0",
   "description": "Mock Anything: a working, stateful twin of any API on your laptop in one command. For developers and AI agents. No keys, no sandbox sign-up, no bill.",
   "license": "Apache-2.0",
   "type": "module",
-  "homepage": "https://mockanything.dev",
+  "homepage": "https://shipatmidnight.dev/mockanything",
   "keywords": [
     "mock",
     "api-mock",

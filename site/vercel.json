@@ -6,13 +6,7 @@
   "redirects": [
     {
       "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.mockanything.dev"
-        }
-      ],
-      "destination": "https://mockanything.dev/:path*",
+      "destination": "https://shipatmidnight.dev/mockanything/:path*",
       "permanent": true
     }
   ],

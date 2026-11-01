@@ -63,5 +63,5 @@ Minimal example:
 }
 
 Then start it. With the MCP server: twin_start with { "definition": <your JSON> }.
-From a shell: save it as twin.json, check it with \`npx mockanything validate twin.json\`, then run \`npx mockanything twin.json\`.
+From a shell: save it as twin.json, check it with \`npx @shipatmidnight/mockanything validate twin.json\`, then run \`npx @shipatmidnight/mockanything twin.json\`.
 If it is rejected, the error lists what to fix.`;
