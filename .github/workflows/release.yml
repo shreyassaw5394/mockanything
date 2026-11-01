@@ -38,7 +38,14 @@ jobs:
           grep -q "export const VERSION = \"$V\"" src/version.ts || { echo "::error::src/version.ts does not say $V"; exit 1; }
       - run: pnpm run check
       - name: Publish to npm (trusted publishing, provenance)
-        run: npm publish --access public --provenance
+        # the very first version is published by hand (npm only allows trusted publishing once a package exists)
+        run: |
+          V=$(node -p "require('./package.json').version")
+          if [ "$(npm view "mockanything@$V" version 2>/dev/null)" = "$V" ]; then
+            echo "mockanything@$V is already on npm; skipping the publish"
+          else
+            npm publish --access public --provenance
+          fi
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
