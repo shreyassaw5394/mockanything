@@ -188,3 +188,24 @@ describe("spec discovery on docs pages", () => {
     expect(discoverSpecLink(`<p>No spec here</p>`, "https://x.example/")).toBeNull();
   });
 });
+
+describe("POST on a path variable that is not an object id", () => {
+  it("sends (creates) instead of answering 404 (Vonage-style /sms/{format})", async () => {
+    const spec = {
+      openapi: "3.0.0", info: { title: "SMS", version: "1" },
+      paths: { "/sms/{format}": { post: {
+        parameters: [{ name: "format", in: "path", required: true, schema: { type: "string", enum: ["json", "xml"] } }],
+        requestBody: { content: { "application/json": { schema: { $ref: "#/components/schemas/Sms" } } } },
+        responses: { "200": { description: "ok", content: { "application/json": { schema: { $ref: "#/components/schemas/Sms" } } } } },
+      } } },
+      components: { schemas: { Sms: { type: "object", properties: { id: { type: "string" }, to: { type: "string" }, text: { type: "string" } } } } },
+    };
+    const { def } = ingestOpenApi(spec, "sms.json");
+    expect(def.operations.find((o) => o.path === "/sms/{format}")?.action).toBe("create");
+    const t = await serveTwin(def, { port: 0 });
+    try {
+      const r = await fetch(`${t.url}/sms/json`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: "447700900000", text: "hi" }) });
+      expect(r.status).toBeLessThan(300);
+    } finally { await t.close(); }
+  });
+});
