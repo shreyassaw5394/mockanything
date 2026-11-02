@@ -333,6 +333,12 @@ export function ingestOpenApi(doc: unknown, sourceUrl?: string): IngestResult {
         const { envelope } = unwrapSingle(R, resp);
         op = { method: r.method, path, action: "read", resource: key, idParam: c.idParam };
         if (envelope !== undefined) { op.response = { body: envelope }; envelopeSingle.set(key, envelope); }
+      } else if (c.kind === "item" && r.method === "POST" && !classified.some((x) => x !== c && x.resourceKey === key && x.r.path === r.path) && !classified.some((x) => x.resourceKey === key && x.kind === "collection" && (x.r.method === "POST" || x.r.method === "PUT"))) {
+        // POST /sms/{format} with nothing else at that path: the variable is not an object id, so this sends (creates) one
+        const { envelope } = unwrapSingle(R, resp);
+        op = { method: r.method, path, action: "create", resource: key };
+        op.response = { status: successStatus(r.op), ...(envelope !== undefined ? { body: envelope } : {}) };
+        if (envelope !== undefined) envelopeSingle.set(key, envelope);
       } else if (c.kind === "item" && (r.method === "PUT" || r.method === "PATCH" || r.method === "POST")) {
         const { envelope } = unwrapSingle(R, resp);
         op = { method: r.method, path, action: "update", resource: key, idParam: c.idParam };
