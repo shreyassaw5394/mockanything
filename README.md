@@ -199,6 +199,10 @@ Every twin, built-in or inferred, is a plain YAML/JSON definition run by one eng
 
 Packs for more APIs are very welcome, especially regional ones. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: packs contain facts only (paths, fields, error codes, documented test values), never copied documentation text or logos.
 
+## Community
+
+Questions, ideas and show-and-tell: the [Ship at Midnight Discord](https://discord.gg/s8wj7tBAM), one server for every tool, with a channel for Mock Anything.
+
 ## Licence and notices
 
 Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
