@@ -1,3 +1,8 @@
+## 0.2.2
+
+- Spec twins: a POST whose only path is `/x/{param}` (for example Vonage `POST /sms/{format}`) now sends instead of answering 404.
+- README: community link.
+
 ## 0.2.1
 
 - Published as `@shipatmidnight/mockanything` (the command stays `mockanything`), with its listing in the MCP Registry.
