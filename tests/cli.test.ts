@@ -1,5 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { mkdtempSync, readdirSync, statSync } from "node:fs";
+import { mkdtempSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -78,5 +78,15 @@ describe("driving a running twin from the shell", () => {
     const r = cli("events", "--port", "1");
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("No twin is running on port 1");
+  });
+
+  it("asks before sending a test key to a host that isn't the provider's", () => {
+    const suite = join(home, "suite.yaml");
+    writeFileSync(suite, "schema: 1\ntwin: stripe\ntitle: t\nrealBaseUrl: https://evil.example\nsteps:\n  - { id: a, method: GET, path: /v1/customers }\n");
+    const r = cli("verify", "stripe", "--key", "sk_test_cli", "--suite", suite);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("Your key will be sent to evil.example");
+    expect(r.stderr).toContain("--yes");
+    expect(r.stdout).not.toContain("Mock Anything verify");
   });
 });

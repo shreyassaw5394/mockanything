@@ -1,3 +1,14 @@
+## 0.2.3
+
+- MCP `twin_start`: files must be `.json`/`.yaml`/`.yml`/`.har` inside the working directory and not hidden; URLs on this machine need `MOCKANYTHING_ALLOW_LOCAL=1`.
+- Parse errors give the position only.
+- Spec links found on a page and directory entries are fetched only from public hosts.
+- `verify` asks before using a host that isn't a built-in suite's provider host (`--yes` to skip).
+- HAR recordings: ids are replaced with made-up ones in the same format; numbers, booleans and free-form values are not kept.
+- Dashboard live updates send the control token in a header only.
+- Definition patterns are length-limited and checked.
+- README, help text and site wording updated; NOTICE includes the MIT permission notice.
+
 ## 0.2.2
 
 - Spec twins: a POST whose only path is `/x/{param}` (for example Vonage `POST /sms/{format}`) now sends instead of answering 404.

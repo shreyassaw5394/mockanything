@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { Twin, type ChaosConfig, type ChaosMode, ALL_CHAOS } from "./twin.js";
 import type { TwinDefinition } from "./types.js";
@@ -95,7 +95,9 @@ export async function serveTwin(def: TwinDefinition, opts: ServeOptions = {}): P
         return await control(req, res, url, origin);
       }
 
-      // the twin API
+      // the twin API: browsers calling from another site are refused, with or without an Origin header
+      const site = req.headers["sec-fetch-site"];
+      if (!origin && site === "cross-site") return sendJson(res, 403, { error: "Origin not allowed. Add it with --cors <origin>." });
       if (!originAllowed(origin)) return sendJson(res, 403, { error: "Origin not allowed. Add it with --cors <origin>." });
       const cors: Record<string, string> = origin ? {
         "access-control-allow-origin": origin,
@@ -160,8 +162,8 @@ export async function serveTwin(def: TwinDefinition, opts: ServeOptions = {}): P
     // control API: token + local origin
     if (!p.startsWith("/api/")) return sendJson(res, 404, { error: "Not found" });
     if (!isLocalOrigin(origin)) return sendJson(res, 403, { error: "Origin not allowed" });
-    const given = req.headers["x-mockanything-token"] ?? url.searchParams.get("token");
-    if (given !== token) return sendJson(res, 401, { error: "Missing or wrong control token (printed when the twin started)." });
+    const given = req.headers["x-mockanything-token"];
+    if (typeof given !== "string" || !sameToken(given, token)) return sendJson(res, 401, { error: "Missing or wrong control token (printed when the twin started)." });
 
     const body = req.method === "POST" ? safeParse(await readBody(req)) : {};
     switch (`${req.method} ${p}`) {
@@ -261,6 +263,11 @@ export async function serveTwin(def: TwinDefinition, opts: ServeOptions = {}): P
 function safeParse(s: string): Record<string, unknown> {
   try { const v = JSON.parse(s, (k, v) => (k === "__proto__" || k === "constructor" ? undefined : v)); return v && typeof v === "object" ? v : {}; }
   catch { return {}; }
+}
+
+function sameToken(given: string, expected: string): boolean {
+  const a = Buffer.from(given), b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export function parseChaos(body: Record<string, unknown> | null | undefined): ChaosConfig | null {

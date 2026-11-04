@@ -53,10 +53,10 @@ const MAX_SPEC = 60 * 1024 * 1024;
 const DIRECTORY = "https://api.apis.guru/v2/list.json";
 const DAY = 24 * 60 * 60 * 1000;
 
-/** Fetch text from a URL. Public URLs go through the guarded fetch; URLs on this machine are allowed directly. */
+/** Fetch text from a URL through the guarded fetch. URLs on this machine are fetched directly only with `allowLocal: true`. */
 export async function fetchText(url: string, maxBytes = MAX_SPEC, opts: { allowLocal?: boolean } = {}): Promise<{ text: string; contentType: string; finalUrl: string }> {
-  const headers = { "user-agent": "mockanything (+https://mockanything.dev)", accept: "application/json, application/yaml, text/yaml, text/html;q=0.8, */*;q=0.5" };
-  if (isLoopbackUrl(url) && opts.allowLocal !== false) {
+  const headers = { "user-agent": "mockanything (+https://shipatmidnight.dev/mockanything)", accept: "application/json, application/yaml, text/yaml, text/html;q=0.8, */*;q=0.5" };
+  if (isLoopbackUrl(url) && opts.allowLocal === true) {
     const res = await fetch(url, { headers, signal: AbortSignal.timeout(15_000), redirect: "manual" });
     if (!res.ok) throw new Error(`${url} returned HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
@@ -98,7 +98,7 @@ function fromDocument(doc: unknown, where: string, origin: Resolved["origin"]): 
     const { openapi, summary, notes } = harToOpenApi(doc, name);
     const { def, report } = ingestOpenApi(openapi);
     def.id = def.id || "recorded";
-    def.source = { kind: "har", notes: `Generated locally from a recording (${name}). Field names and shapes only; no header values or text from the recording.` };
+    def.source = { kind: "har", notes: `Generated locally from a recording (${name}). Field names, types, id formats and status codes only; ids are made up, and no header values, text, numbers or other values from the recording are copied.` };
     def.notes = [`Built from ${summary.used} recorded requests to ${summary.host} (${summary.operations} operations).`, ...notes, ...(def.notes ?? [])];
     report.guesses.unshift(`Built from ${summary.used} of ${summary.entries} recorded requests to ${summary.host}.`, ...notes);
     return { def, report, origin: "har", detail: `${name} (recording of ${summary.host})` };
@@ -117,7 +117,12 @@ export function discoverSpecLink(html: string, base: string): string | null {
   return null;
 }
 
-export async function resolveSource(input: string): Promise<Resolved> {
+export interface ResolveOptions {
+  /** Allow a URL on this machine when the caller typed it (the CLI). Links found inside fetched pages never get this. */
+  allowLocal?: boolean;
+}
+
+export async function resolveSource(input: string, opts: ResolveOptions = {}): Promise<Resolved> {
   const trimmed = input.trim();
   // 1. curated pack
   const pack = /^[a-z0-9._-]+$/i.test(trimmed) ? findPack(trimmed) : null;
@@ -127,22 +132,24 @@ export async function resolveSource(input: string): Promise<Resolved> {
   const asPath = resolvePath(trimmed);
   if (existsSync(asPath) && statSync(asPath).isFile()) {
     if (statSync(asPath).size > MAX_SPEC) throw new Error(`${trimmed} is larger than ${MAX_SPEC} bytes`);
-    return fromDocument(parseDocument(readFileSync(asPath, "utf8")), trimmed, "openapi-file");
+    return fromDocument(parseDocument(readFileSync(asPath, "utf8"), trimmed), trimmed, "openapi-file");
   }
 
   // 3. URL
   if (/^https?:\/\//i.test(trimmed)) {
-    const { text, contentType, finalUrl } = await fetchText(trimmed);
+    const local = opts.allowLocal === true && isLoopbackUrl(trimmed);
+    const { text, contentType, finalUrl } = await fetchText(trimmed, MAX_SPEC, { allowLocal: local });
     const looksHtml = contentType.includes("html") || /^\s*</.test(text);
     if (looksHtml) {
       const link = discoverSpecLink(text, finalUrl);
       if (link) {
-        const next = await fetchText(link);
-        if (!/^\s*</.test(next.text)) return fromDocument(parseDocument(next.text), link, "openapi-url");
+        // a discovered link is never more local than the page it came from
+        const next = await fetchText(link, MAX_SPEC, { allowLocal: local && isLoopbackUrl(link) });
+        if (!/^\s*</.test(next.text)) return fromDocument(parseDocument(next.text, link), link, "openapi-url");
       }
       throw new DocsPageError(trimmed, text);
     }
-    return fromDocument(parseDocument(text), trimmed, "openapi-url");
+    return fromDocument(parseDocument(text, trimmed), trimmed, "openapi-url");
   }
 
   // 4. a known API → the provider's own current spec (fetched from its source, never bundled)
@@ -150,7 +157,7 @@ export async function resolveSource(input: string): Promise<Resolved> {
   if (known) {
     try {
       const text = await cachedText(known.url, 7 * DAY);
-      const r = fromDocument(parseDocument(text), known.url, "official");
+      const r = fromDocument(parseDocument(text, known.url), known.url, "official");
       return { ...r, detail: `${known.title} (the provider's published spec: ${known.source})`, specLicense: known.license ?? r.def.source?.license ?? "" };
     } catch (e) {
       // the official source is unreachable or changed shape: fall back to the directory copy
@@ -196,6 +203,6 @@ export async function resolveByName(name: string): Promise<Resolved> {
   const v = entry.versions[entry.preferred];
   if (!v?.swaggerUrl) throw new Error(`The directory entry for ${pick.key} has no spec URL.`);
   const text = await cachedText(v.swaggerUrl, 7 * DAY);
-  const r = fromDocument(parseDocument(text), v.swaggerUrl, "apis-guru");
+  const r = fromDocument(parseDocument(text, v.swaggerUrl), v.swaggerUrl, "apis-guru");
   return { ...r, detail: `${v.info?.title ?? pick.key} (${pick.key}, from the public APIs.guru directory)`, alternatives: scored.slice(1, 8).map((s) => s.key) };
 }

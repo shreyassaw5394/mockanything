@@ -1,8 +1,8 @@
 {
   "name": "@shipatmidnight/mockanything",
   "mcpName": "io.github.shreyassaw5394/mockanything",
-  "version": "0.2.2",
-  "description": "Mock Anything: a working, stateful twin of any API on your laptop in one command. For developers and AI agents. No keys, no sandbox sign-up, no bill.",
+  "version": "0.2.3",
+  "description": "Mock Anything: a working, stateful twin of most public APIs on your laptop in one command. For developers and AI agents. No keys, no sandbox sign-up, no bill.",
   "license": "Apache-2.0",
   "type": "module",
   "homepage": "https://shipatmidnight.dev/mockanything",

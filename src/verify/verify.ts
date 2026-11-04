@@ -8,6 +8,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseDocument, packsDir } from "../engine/load.js";
+import { safeMatch } from "../engine/template.js";
 import { serveTwin } from "../engine/server.js";
 import type { TwinDefinition } from "../engine/types.js";
 import { isLoopbackUrl } from "../engine/util.js";
@@ -89,7 +90,7 @@ export function suitePath(twinId: string): string { return join(packsDir(), "ver
 export function loadSuite(pathOrId: string): Suite {
   const p = existsSync(pathOrId) ? pathOrId : suitePath(pathOrId);
   if (!existsSync(p)) throw new Error(`No verify suite for "${pathOrId}". Built-in suites: ${builtInSuites().join(", ") || "none"}. Write one (see packs/verify/) and pass --suite <file>, or use --against <base-url> to check the read-only list calls.`);
-  const s = parseDocument(readFileSync(p, "utf8")) as Suite;
+  const s = parseDocument(readFileSync(p, "utf8"), p) as Suite;
   if (!s || s.schema !== 1 || typeof s.twin !== "string" || !Array.isArray(s.steps) || !s.steps.length) throw new Error(`${p} is not a verify suite`);
   for (const st of [...s.steps, ...(s.cleanup ?? [])]) {
     if (typeof st.method !== "string" || typeof st.path !== "string" || !st.path.startsWith("/")) throw new Error(`${p}: every step needs a method and a path starting with /`);
@@ -100,6 +101,21 @@ export function loadSuite(pathOrId: string): Suite {
 export function builtInSuites(): string[] {
   try { return readdirSync(join(packsDir(), "verify")).filter((f) => f.endsWith(".yaml")).map((f) => f.replace(/\.yaml$/, "")).sort(); }
   catch { return []; }
+}
+
+/** Hosts the built-in suites call: the providers' own API hosts. */
+export function officialHosts(): Set<string> {
+  const hosts = new Set<string>();
+  for (const id of builtInSuites()) {
+    try { hosts.add(new URL(loadSuite(id).realBaseUrl).host.toLowerCase()); } catch { /* skip */ }
+  }
+  return hosts;
+}
+
+/** Whether sending the key to this base URL needs the user's say-so (a host no built-in suite uses, and not this machine). */
+export function needsKeyConfirm(baseUrl: string): boolean {
+  if (isLoopbackUrl(baseUrl)) return false;
+  try { return !officialHosts().has(new URL(baseUrl).host.toLowerCase()); } catch { return true; }
 }
 
 /** A read-only suite for any twin: its list calls, plus one lookup of an id that doesn't exist (the error shape). */
@@ -119,11 +135,10 @@ export function autoSuite(def: TwinDefinition, realBaseUrl: string): Suite {
 
 export function assertTestKey(key: string, def: TwinDefinition, suite: Suite): void {
   if (!key) throw new Error("A sandbox (test-mode) key is required: --key <test key> or MOCKANYTHING_SANDBOX_KEY.");
-  const live = LIVE_KEY.some((r) => r.test(key)) || (def.auth.livePattern ? safeTest(def.auth.livePattern, key) : false);
+  const live = LIVE_KEY.some((r) => r.test(key)) || (def.auth.livePattern ? safeMatch(def.auth.livePattern, key) : false);
   if (live) throw new Error("That looks like a live key. verify only runs with test-mode keys, so nothing real is charged, sent or changed.");
-  if (suite.testKey && !safeTest(suite.testKey, key)) throw new Error(`That doesn't look like a ${def.title} test key (expected /${suite.testKey}/). verify only runs with test-mode keys.`);
+  if (suite.testKey && !safeMatch(suite.testKey, key)) throw new Error(`That doesn't look like a ${def.title} test key (expected /${suite.testKey}/). verify only runs with test-mode keys.`);
 }
-function safeTest(src: string, s: string): boolean { try { return new RegExp(src).test(s); } catch { return false; } }
 
 // ---------- comparison ----------
 
@@ -233,6 +248,15 @@ function authHeaders(def: TwinDefinition, key: string): { headers: Record<string
   return { headers: { authorization: `Bearer ${key}` } };
 }
 
+/** Remove every form of the key (as typed, URL-encoded, Basic-auth Base64) from a message. */
+export function redactKey(message: string, key: string): string {
+  if (!key) return message;
+  const forms = [key, encodeURIComponent(key), Buffer.from(key.includes(":") ? key : `${key}:`).toString("base64"), Buffer.from(key).toString("base64")];
+  let out = message;
+  for (const f of [...new Set(forms)].sort((a, b) => b.length - a.length)) if (f) out = out.replaceAll(f, "<key>");
+  return out;
+}
+
 export async function runVerify(def: TwinDefinition, suite: Suite, opts: VerifyOptions): Promise<FidelityReport> {
   assertTestKey(opts.key, def, suite);
   const against = (opts.against ?? suite.realBaseUrl).replace(/\/+$/, "");
@@ -257,7 +281,7 @@ export async function runVerify(def: TwinDefinition, suite: Suite, opts: VerifyO
     for (const [k, v] of Object.entries(st.query ?? {})) url.searchParams.set(k, fillVars(String(v), t.vars));
     const auth = st.noAuth ? { headers: {} as Record<string, string> } : authHeaders(def, t.key);
     if (auth.query) url.searchParams.set(auth.query[0], auth.query[1]);
-    const headers: Record<string, string> = { accept: "application/json", "user-agent": "mockanything-verify (+https://mockanything.dev)", ...suite.headers, ...auth.headers };
+    const headers: Record<string, string> = { accept: "application/json", "user-agent": "mockanything-verify (+https://shipatmidnight.dev/mockanything)", ...suite.headers, ...auth.headers };
     let body: string | undefined;
     if (st.body && st.method.toUpperCase() !== "GET") {
       const filled = fillDeep(st.body, t.vars);
@@ -288,7 +312,7 @@ export async function runVerify(def: TwinDefinition, suite: Suite, opts: VerifyO
         for (const [k, p] of Object.entries(st.save ?? {})) { const v = pick(parsed, p); if (v !== undefined && v !== null) t.vars[k] = String(v); }
         return { status, body: parsed };
       } catch (e) {
-        return { status: null, body: undefined, error: (e as Error).message.replace(opts.key, "<key>") };
+        return { status: null, body: undefined, error: redactKey((e as Error).message, opts.key) };
       }
     }
     return { status: 429, body: undefined };

@@ -21,11 +21,25 @@ export function packageRoot(): string {
 
 export function packsDir(): string { return join(packageRoot(), "packs"); }
 
-/** Parse YAML or JSON text safely (core schema, no custom tags, bounded aliases). */
-export function parseDocument(text: string): unknown {
+/**
+ * Parse YAML or JSON text safely (core schema, no custom tags, bounded aliases).
+ * Errors name the position only and never quote the text, so a file that isn't a spec doesn't leak its content.
+ */
+export function parseDocument(text: string, where = "The file"): unknown {
   const t = text.trimStart();
-  if (t.startsWith("{") || t.startsWith("[")) return JSON.parse(text, (k, v) => (k === "__proto__" || k === "constructor" ? undefined : v));
-  return parseYaml(text, { schema: "core", customTags: [], maxAliasCount: 200, uniqueKeys: true, prettyErrors: true });
+  if (t.startsWith("{") || t.startsWith("[")) {
+    try { return JSON.parse(text, (k, v) => (k === "__proto__" || k === "constructor" ? undefined : v)); }
+    catch (e) {
+      const m = /line (\d+) column (\d+)/.exec((e as Error).message);
+      throw new Error(`${where} is not valid JSON${m ? ` (line ${m[1]}, column ${m[2]})` : ""}.`);
+    }
+  }
+  try { return parseYaml(text, { schema: "core", customTags: [], maxAliasCount: 200, uniqueKeys: true, prettyErrors: false }); }
+  catch (e) {
+    const at = (e as { pos?: [number, number] }).pos?.[0];
+    const line = typeof at === "number" ? text.slice(0, at).split("\n").length : 0;
+    throw new Error(`${where} is not valid YAML or JSON${line ? ` (line ${line})` : ""}.`);
+  }
 }
 
 export interface PackFidelity { score: number; measuredAt: string; against: string }
@@ -67,7 +81,7 @@ export function loadDefinitionFile(path: string): TwinDefinition {
   const full = resolve(path);
   const size = statSync(full).size;
   if (size > MAX_FILE) throw new Error(`File too large (${size} bytes)`);
-  return validateDefinition(parseDocument(readFileSync(full, "utf8")));
+  return validateDefinition(parseDocument(readFileSync(full, "utf8"), path));
 }
 
 /** Apply a user's overrides file on top of a definition (deep merge; arrays replace). */

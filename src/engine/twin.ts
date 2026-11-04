@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { evalCondition, render, renderString, safeRegex, type EvalContext } from "./template.js";
+import { evalCondition, render, renderString, safeMatch, type EvalContext } from "./template.js";
 import type {
   CheckoutDef, EmitDef, ErrorSpec, Json, OperationDef, ResourceDef, ScenarioDef, Template, TransitionDef, TwinDefinition,
 } from "./types.js";
@@ -481,11 +481,11 @@ export class Twin {
     if (a.type !== "none" && !key && !a.optional) {
       throw new TwinError(this.errSpec("unauthorized", { status: 401, message: "No API key provided. Any test key works with Mock Anything (for example the one printed when the twin started)." }));
     }
-    if (key && a.livePattern && safeRegex(a.livePattern)?.test(key)) {
+    if (key && a.livePattern && safeMatch(a.livePattern, key)) {
       log.warning = "live key refused";
       throw new TwinError(this.errSpec("liveKey", { status: 401, message: "This looks like a live (production) key. Mock Anything refuses live keys: use a test key, or any placeholder value." }));
     }
-    if (key && a.warnPattern && safeRegex(a.warnPattern)?.test(key)) {
+    if (key && a.warnPattern && safeMatch(a.warnPattern, key)) {
       const w = "This looks like a real access token. The twin never needs one: use any placeholder value.";
       log.warning = w;
       if (!this.warnings.includes(w)) this.warnings.push(w);

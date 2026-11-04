@@ -1,7 +1,7 @@
 // Clicks every button and link on the site (desktop + phone) and reports any that are covered or do nothing.
 //   node scripts/site-clicks.mjs [url]   (uses the same local Chrome + puppeteer-core as site-check.mjs)
 const { default: puppeteer } = await import("/Users/shreyassawant/dea/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js");
-const url = process.argv[2] ?? "https://mockanything.dev";
+const url = process.argv[2] ?? "https://shipatmidnight.dev/mockanything";
 const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true });
 for (const [w, h, name] of [[1440, 900, "desktop"], [390, 844, "phone"]]) {
   const page = await browser.newPage();

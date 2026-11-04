@@ -137,13 +137,21 @@ const regexCache = new Map<string, RegExp | null>();
 export function safeRegex(src: string): RegExp | null {
   if (regexCache.has(src)) return regexCache.get(src)!;
   let re: RegExp | null = null;
-  // Refuse nested quantifiers like (a+)+ which can backtrack catastrophically.
-  if (src.length <= 200 && !/\([^)]*[+*][^)]*\)[+*{]/.test(src)) {
+  // Refuse patterns that can backtrack catastrophically: nested quantifiers like (a+)+,
+  // repeated alternations like (a|aa)+, and backreferences.
+  if (src.length <= 200 && !/\([^)]*[+*|][^)]*\)[+*{]/.test(src) && !/\\[1-9k]/.test(src)) {
     try { re = new RegExp(src); } catch { re = null; }
   }
   regexCache.set(src, re);
   return re;
 }
+
+/** Test a definition-supplied pattern against a bounded input; refused patterns never match. */
+export function safeMatch(src: string, s: string): boolean {
+  const re = safeRegex(src);
+  return !!re && s.length <= MAX_MATCH_INPUT && re.test(s);
+}
+const MAX_MATCH_INPUT = 10_000;
 
 export function evalCondition(c: Condition | undefined, ctx: EvalContext): boolean {
   if (!c) return true;
@@ -155,7 +163,7 @@ export function evalCondition(c: Condition | undefined, ctx: EvalContext): boole
   if (c.truthy !== undefined) return truthy(v) === c.truthy;
   if (c.equals !== undefined) return looseEquals(v, c.equals);
   if (c.in) return c.in.some((x) => looseEquals(v, x));
-  if (c.matches) { const re = safeRegex(c.matches); return !!re && typeof v === "string" && re.test(v); }
+  if (c.matches) return typeof v === "string" && safeMatch(c.matches, v);
   if (c.lte !== undefined) { const o = evalExpr(c.lte, ctx); return Number(v) <= Number(o); }
   if (c.gte !== undefined) { const o = evalExpr(c.gte, ctx); return Number(v) >= Number(o); }
   return truthy(v);

@@ -131,6 +131,7 @@ describe("local-only server rules", () => {
     const ok = await raw("/v2/orders", { host: "localhost", origin: "http://localhost:3000" });
     expect(ok.status).toBe(200);
     expect(ok.headers["access-control-allow-origin"]).toBe("http://localhost:3000");
+    expect((await raw("/v2/orders", { host: "localhost", "sec-fetch-site": "cross-site" }, "POST", "{}")).status).toBe(403);
     const pre = await raw("/v2/orders", { host: "localhost", origin: "http://localhost:3000", "access-control-request-method": "POST" }, "OPTIONS");
     expect(pre.status).toBe(204);
   });
@@ -139,10 +140,21 @@ describe("local-only server rules", () => {
     expect((await raw("/__mockanything/api/state", { host: "localhost", "x-mockanything-token": "wrong" })).status).toBe(401);
     expect((await raw("/__mockanything/api/state", { host: "localhost", "x-mockanything-token": t.token })).status).toBe(200);
     expect((await raw("/__mockanything/api/reset", { host: "localhost", "x-mockanything-token": t.token, origin: "https://evil.example" }, "POST", "{}")).status).toBe(403);
+    expect((await raw(`/__mockanything/api/state?token=${t.token}`, { host: "localhost" })).status).toBe(401);
     const page = await raw("/__mockanything/", { host: "localhost" });
     expect(page.status).toBe(200);
     expect(String(page.headers["content-security-policy"])).toContain("frame-ancestors 'none'");
     expect(page.body).not.toContain(t.token);
+  });
+  it("streams live updates to a client that sends the token in a header", async () => {
+    const r = await fetch(`${t.url}/__mockanything/api/stream`, { headers: { "x-mockanything-token": t.token } });
+    expect(r.status).toBe(200);
+    const reader = r.body!.getReader();
+    setTimeout(() => { void fetch(`${t.url}/v2/orders`); }, 50);
+    let got = "";
+    while (!got.includes("event:")) { const { value, done } = await reader.read(); if (done) break; got += new TextDecoder().decode(value); }
+    expect(got).toMatch(/event: request/);
+    await reader.cancel();
   });
   it("only delivers webhooks to localhost unless a host is allowed", () => {
     expect(() => t.twin.addEndpoint("https://example.com/hook")).toThrow(/localhost only/);
