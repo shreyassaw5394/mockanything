@@ -17,7 +17,7 @@ const c = {
   red: (s: string) => (tty ? `\x1b[31m${s}\x1b[39m` : s),
 };
 
-const HELP = `Mock Anything ${VERSION}: a working twin of any API, on your machine.
+const HELP = `Mock Anything ${VERSION}: a working twin of an API, on your machine.
 
 Usage
   mockanything <api>                 start a twin (pack name, any API name, OpenAPI file or URL)
@@ -70,10 +70,12 @@ Verify options
   --against <url>             real API base URL (default: the suite's; required for twins without a suite)
   --out <file>                write the report (.md or .json; repeat for both)
   --pace <ms>                 time between calls to the real API (default 1000, minimum 200)
+  -y, --yes                   send the key to a host that isn't a provider's own API host without asking
   -h, --help / -v, --version
 
 Mock Anything is a free, non-commercial passion project. Not affiliated with any company it simulates.
-Simulated responses only: nothing is sent to the real provider.`;
+Simulated responses only: your app's calls never reach the real provider. Only \`verify\` calls the
+provider's sandbox, with the test key you pass.`;
 
 function fail(msg: string, code = 1): never {
   process.stderr.write(`${c.red("error")} ${msg}\n`);
@@ -82,8 +84,8 @@ function fail(msg: string, code = 1): never {
 
 async function load(source: string, overrides?: string): Promise<Resolved> {
   try {
-    const r = await resolveSource(source);
-    if (overrides) r.def = applyOverrides(r.def, parseDocument(readFileSync(overrides, "utf8")));
+    const r = await resolveSource(source, { allowLocal: true });
+    if (overrides) r.def = applyOverrides(r.def, parseDocument(readFileSync(overrides, "utf8"), overrides));
     return r;
   } catch (e) {
     if (e instanceof DocsPageError) fail(e.message);
@@ -226,7 +228,7 @@ async function drive(cmd: string, arg: string | undefined, values: Record<string
 }
 
 async function verify(source: string, values: Record<string, unknown>): Promise<void> {
-  const { autoSuite, loadSuite, reportMarkdown, runVerify, builtInSuites, assertTestKey } = await import("../verify/verify.js");
+  const { autoSuite, loadSuite, reportMarkdown, runVerify, builtInSuites, assertTestKey, needsKeyConfirm } = await import("../verify/verify.js");
   const r = await load(source, values.overrides as string | undefined);
   const key = String(values.key ?? process.env.MOCKANYTHING_SANDBOX_KEY ?? "");
   let suite;
@@ -239,6 +241,17 @@ async function verify(source: string, values: Record<string, unknown>): Promise<
   if (suite.twin !== r.def.id) fail(`That suite is for the "${suite.twin}" twin, not "${r.def.id}".`);
   try { assertTestKey(key, r.def, suite); } catch (e) { fail((e as Error).message); }
   const against = String(values.against ?? suite.realBaseUrl);
+  if (needsKeyConfirm(against) && !values.yes) {
+    let host = against;
+    try { host = new URL(against).host; } catch { /* runVerify reports it */ }
+    const prompt = `Your key will be sent to ${host}, which is not one of the providers' own API hosts used by the built-in suites.`;
+    if (!process.stdin.isTTY || values.json) fail(`${prompt} Pass --yes if you trust this host.`);
+    const { createInterface } = await import("node:readline/promises");
+    const rl = createInterface({ input: process.stdin, output: process.stderr });
+    const answer = await rl.question(`${c.yellow(prompt)} Continue? [y/N] `);
+    rl.close();
+    if (!/^y(es)?$/i.test(answer.trim())) fail("Cancelled. Nothing was sent.");
+  }
   if (!values.json) process.stdout.write(`${c.bold("Mock Anything verify")} · ${r.def.title} twin vs ${against}\n${c.dim(`  ${suite.steps.length} checks, about one call a second to the real API. Test-mode key only.`)}\n\n`);
   let report;
   try {
@@ -290,6 +303,7 @@ async function main(): Promise<void> {
       times: { type: "string" },
       out: { type: "string", multiple: true },
       json: { type: "boolean" },
+      yes: { type: "boolean", short: "y" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },

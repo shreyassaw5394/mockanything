@@ -1,7 +1,7 @@
 {
   "name": "mockanything",
-  "version": "0.2.2",
-  "description": "Mock Anything: local, stateful twins of any API so your agent can build and test integrations without real keys, real money or real messages.",
+  "version": "0.2.3",
+  "description": "Mock Anything: local, stateful twins of real APIs so your agent can build and test integrations without real keys, real money or real messages.",
   "author": { "name": "Shreyas Sawant", "url": "https://github.com/shreyassaw5394" },
   "homepage": "https://shipatmidnight.dev/mockanything",
   "repository": "https://github.com/shreyassaw5394/mockanything",

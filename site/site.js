@@ -1,5 +1,5 @@
 // No analytics, no cookies, no network requests.
-// The orbit (the API and its twin), the card switch, the chaos switches, the copy box, tabs, countdown, entrances.
+// The orbit (the API and its twin), the card switch, the chaos switches, the copy box, tabs, entrances.
 (() => {
   document.documentElement.classList.add("js");
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -59,21 +59,6 @@
         select(next); next.focus();
       });
     });
-  }
-
-  // ---- launch countdown ----
-  const cd = $("#countdown");
-  if (cd) {
-    const target = new Date(cd.dataset.launch).getTime();
-    const two = (n) => String(n).padStart(2, "0");
-    const tick = () => {
-      const ms = target - Date.now();
-      if (ms <= 0) { cd.textContent = "Live now"; return; }
-      const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
-      cd.textContent = window.matchMedia("(max-width: 640px)").matches ? `Launch in ${d}d ${h}h` : `Launch in ${d}d ${two(h)}:${two(m)}:${two(s)}`;
-      setTimeout(tick, 1000 - (Date.now() % 1000));
-    };
-    tick();
   }
 
   // ---- the card switch: the twin's real answers for two documented test cards ----

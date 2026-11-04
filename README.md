@@ -2,16 +2,16 @@
 
 <!-- mcp-name: io.github.shreyassaw5394/mockanything -->
 
-**A working twin of any API, running on your machine in one command. No keys, no sandbox sign-up, no bill.**
+**A working twin of an API, running on your machine in one command. No keys, no sandbox sign-up, no bill.**
 
 ```bash
 npx @shipatmidnight/mockanything stripe
 # → Stripe twin running at http://localhost:4010/v1
 ```
 
-Point your app or agent at that URL instead of the real one and it behaves like the real API for the flows it covers: create a customer, charge a test card, get the signed webhook, refund it. None of it is real, and nothing leaves your machine.
+Point your app or agent at that URL instead of the real one and it behaves like the real API for the flows it covers: create a customer, charge a test card, get the signed webhook, refund it. None of it is real, and your app's calls never reach the real provider.
 
-Mock Anything works with **any** API, not just a fixed list:
+Mock Anything works with most public APIs, not just a fixed list (every API in the public APIs.guru directory started as a twin in our [2026-10-29 measurement](#how-many-apis-work)):
 
 ```bash
 npx @shipatmidnight/mockanything stripe                          # a hand-tuned pack
@@ -93,7 +93,7 @@ Record your app talking to the real API (browser DevTools → Network → "Save 
 npx @shipatmidnight/mockanything ./checkout.har
 ```
 
-Mock Anything rebuilds the endpoints, id formats, list shapes and status lifecycles it saw. It keeps field names and shapes only: header values, cookies, query values and free text from the recording are never copied into the twin, and emails, URLs and dates are replaced with made-up values.
+Mock Anything rebuilds the endpoints, id formats, list shapes and status lifecycles it saw. It keeps field names, types, id formats and short status/type codes only: ids are replaced with made-up ones of the same format, and header values, cookies, query values, free text, numbers and booleans from the recording are never copied into the twin. Emails, URLs and dates are replaced with made-up values.
 
 No spec at all? Let your agent build one: the MCP tool `twin_from_docs` reads a documentation page and gives the agent a short format guide; the agent writes a twin definition and starts it with `twin_start`.
 
@@ -127,6 +127,8 @@ Cursor, Windsurf and other MCP clients:
 ```
 
 Tools: `twin_start`, `twin_from_docs`, `twin_env`, `twin_events`, `twin_state`, `twin_scenario`, `twin_chaos`, `twin_webhook_add`, `twin_emit`, `twin_advance_clock`, `twin_reset`, `twin_stop`, `twin_list`, `packs_list`.
+
+`twin_start` loads files only if they are `.json`, `.yaml`, `.yml` or `.har`, inside the MCP server's working directory and not hidden. URLs on your own machine are off for agents unless you set `MOCKANYTHING_ALLOW_LOCAL=1` in the server's environment.
 
 An agent can say "start a Stripe twin, build the checkout, then force a declined card and check my code handles it" without asking you for keys.
 
@@ -166,7 +168,7 @@ mockanything mcp                   MCP server over stdio
 - Listens on `localhost` only. Delivers webhooks to `localhost` only unless you allow a host.
 - Refuses live keys (`sk_live_…` and similar) and real-looking card numbers. Use the provider's documented test values.
 - Test checkout pages are plain, carry a "not a real payment" banner, and only exist on your machine.
-- No telemetry. Nothing is sent anywhere except the webhooks you configure.
+- No telemetry. The only outbound traffic is what you ask for: webhooks to the URLs you configure, downloads of the API descriptions you name (from the URL you give, the provider's published source or the APIs.guru directory), `verify` calls to the provider's sandbox with your test key, and npm when you install or run it with `npx`.
 
 ## How faithful is a twin?
 
@@ -187,7 +189,7 @@ npx @shipatmidnight/mockanything verify ./openapi.yaml --against https://api.exa
   Fidelity <score>  status · fields · types · ids and codes
 ```
 
-It only runs with test-mode keys (live keys are refused), makes about one call a second with a hard cap per run, and creates a few test objects in your sandbox (the Stripe suite deletes its customer afterwards). The report lists field paths, types and code values only, never response data or your key. Built-in suites: `stripe`, `paystack`; write your own for any twin (see `packs/verify/`). Webhooks are not compared yet.
+It only runs with test-mode keys (live keys are refused), asks before sending your key to a host that isn't one of the providers' own API hosts used by the built-in suites (`--yes` to skip), makes about one call a second with a hard cap per run, and creates a few test objects in your sandbox (the Stripe suite deletes its customer afterwards). The report lists field paths, types and code values only, never response data or your key. Built-in suites: `stripe`, `paystack`; write your own for any twin (see `packs/verify/`). Webhooks are not compared yet.
 
 `mockanything list` shows each pack's published score and the date it was measured. Use twins to build and test quickly; run your final checks against the provider's sandbox before you ship.
 

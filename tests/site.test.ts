@@ -27,7 +27,7 @@ describe("website", () => {
         const assets = [...html.matchAll(/<(?:script|link|img|source|iframe|video|audio)\b[^>]*?(?:src|href)="([^"]+)"[^>]*>/g)]
           .filter((m) => !/rel="canonical"/.test(m[0]))
           .map((m) => m[1]!);
-        for (const c of [...html.matchAll(/rel="canonical" href="([^"]+)"/g)]) expect(c[1]!.startsWith("https://mockanything.dev/")).toBe(true);
+        for (const c of [...html.matchAll(/rel="canonical" href="([^"]+)"/g)]) expect(c[1]!.startsWith("https://shipatmidnight.dev/mockanything")).toBe(true);
         for (const a of assets) expect(a.startsWith("/"), `${page}: ${a}`).toBe(true);
         expect(html).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/);
         expect(html).not.toMatch(/\sstyle="/);

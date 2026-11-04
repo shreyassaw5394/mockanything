@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { TwinDefinition } from "./types.js";
+import { safeRegex } from "./template.js";
 
 // Definitions can come from agents or strangers, so the schema is strict and bounded.
 const str = (max = 2000) => z.string().max(max);
@@ -161,7 +162,7 @@ export function validateDefinition(input: unknown): TwinDefinition {
   if (def.webhooks?.storeAs && !def.resources[def.webhooks.storeAs]) problems.push(`webhooks.storeAs: unknown resource "${def.webhooks.storeAs}"`);
   if (def.webhooks?.registration && !def.resources[def.webhooks.registration.resource]) problems.push(`webhooks.registration: unknown resource`);
   for (const p of [def.auth.livePattern, def.auth.warnPattern].filter(Boolean) as string[]) {
-    try { new RegExp(p); } catch { problems.push(`auth pattern is not a valid regex: ${p}`); }
+    if (!safeRegex(p)) problems.push(`auth pattern is not a valid or safe regex (max 200 characters, no nested or repeated groups, no backreferences): ${p}`);
   }
   if (problems.length) throw new DefinitionError(`Invalid twin definition:\n  ${problems.slice(0, 20).join("\n  ")}`);
   return def;

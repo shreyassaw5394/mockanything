@@ -1,7 +1,7 @@
 // Serve site/ with the same headers as production (from site/vercel.json) and check it in headless Chrome:
 // console errors, CSP violations, requests to other hosts, horizontal overflow, broken links, screenshots.
 //
-//   node scripts/site-check.mjs [outDir] [--url https://mockanything.dev]
+//   node scripts/site-check.mjs [outDir] [--url https://shipatmidnight.dev/mockanything]
 //
 // Needs Chrome (CHROME_PATH or the default macOS location) and puppeteer-core (PUPPETEER_CORE path or installed).
 import { createServer } from "node:http";

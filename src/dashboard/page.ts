@@ -115,7 +115,17 @@ input, select { font:inherit; padding:6px 8px; border-radius:6px; border:1px sol
   document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", async () => { tab = b.dataset.tab; document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", String(x === b))); await loadInfo(); render(); }));
   let pending = false;
   const refresh = () => { if (pending) return; pending = true; setTimeout(async () => { pending = false; if (tab === "webhooks" || tab === "controls") await loadInfo(); render(); }, 250); };
-  loadInfo().then(ok => { if (!ok) return; render(); const es = new EventSource("/__mockanything/api/stream?token=" + encodeURIComponent(token)); es.onmessage = refresh; ["request", "delivery", "state"].forEach(k => es.addEventListener(k, refresh)); });
+  // live updates: a streamed fetch, so the token travels in a header (EventSource can't send one)
+  const stream = async () => {
+    try {
+      const r = await fetch("/__mockanything/api/stream", { headers: { "x-mockanything-token": token } });
+      if (!r.ok || !r.body) throw new Error("stream");
+      const reader = r.body.getReader();
+      for (;;) { const { done, value } = await reader.read(); if (done) break; const text = new TextDecoder().decode(value); if (text.includes("event:") || text.includes("data:")) refresh(); }
+    } catch {}
+    setTimeout(stream, 2000);
+  };
+  loadInfo().then(ok => { if (!ok) return; render(); stream(); });
 })();
 </script></body></html>`;
 }

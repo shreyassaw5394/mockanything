@@ -1,10 +1,11 @@
 /**
  * HAR recording → OpenAPI 3 description → the normal inference.
  *
- * Privacy: nothing secret leaves the recording. Header values, cookies, query values and free-text strings are never
- * copied. Only shapes (field names and types), ids (for id format), status-like values (for lifecycles) and numbers or
- * booleans are kept. Emails, URLs and dates become formats, so the twin invents its own values.
+ * Privacy: no values from the recording are copied. Header values, cookies, query values, free text, numbers and
+ * booleans are dropped. Kept: field names and types, id formats (as made-up ids with the same prefix and length) and
+ * short status/type codes (for lifecycles). Emails, URLs and dates become formats, so the twin invents its own values.
  */
+import { randomBytes } from "node:crypto";
 import { singularize } from "../engine/util.js";
 
 const MAX_ENTRIES = 5000;
@@ -12,7 +13,27 @@ const MAX_BODY = 1024 * 1024;
 const MAX_DEPTH = 8;
 const MAX_PROPS = 200;
 const STATE_KEYS = new Set(["status", "state", "phase", "lifecycle_state"]);
-const KEEP_STRING_KEYS = new Set(["object", "type", "kind", "currency", "method", "channel", "livemode", "mode", "gateway", "domain"]);
+const KEEP_STRING_KEYS = new Set(["object", "type", "kind", "currency", "method", "channel", "livemode", "mode", "gateway"]);
+/** Codes like `pending`, `card`, `usd`; anything longer or with spaces is treated as data. */
+const CODE = /^[A-Za-z0-9_.-]{1,40}$/;
+const isIdKey = (key: string) => /(^|_)id$/i.test(key) || /[a-z0-9]Id$/.test(key);
+
+/** A made-up id with the same prefix, length and character classes as a recorded one. */
+export function synthId(real: string): string {
+  const m = /^([A-Za-z]{1,12}_)?(.*)$/s.exec(real.slice(0, 120))!;
+  const rest = m[2] ?? "";
+  const hex = /^[0-9a-fA-F-]+$/.test(rest);
+  const bytes = randomBytes(rest.length);
+  let out = "";
+  for (let i = 0; i < rest.length; i++) {
+    const ch = rest[i]!, b = bytes[i]!;
+    if (/[0-9]/.test(ch)) out += String(b % 10);
+    else if (/[a-z]/.test(ch)) out += (hex ? "abcdef" : "abcdefghijklmnopqrstuvwxyz")[b % (hex ? 6 : 26)];
+    else if (/[A-Z]/.test(ch)) out += (hex ? "ABCDEF" : "ABCDEFGHIJKLMNOPQRSTUVWXYZ")[b % (hex ? 6 : 26)];
+    else out += ch;
+  }
+  return (m[1] ?? "") + out;
+}
 const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
 type Schema = Record<string, unknown>;
@@ -188,15 +209,20 @@ function schemaOf(values: unknown[], key: string, depth = 0, states?: StateValue
       s.type = "string";
       const strs = same as string[];
       const k = key.toLowerCase();
-      if (STATE_KEYS.has(k)) { const distinct = [...new Set([...strs, ...(states?.get(k) ?? [])])].slice(0, 30); s.enum = distinct; s.example = distinct[0]; return s; }
+      if (STATE_KEYS.has(k)) {
+        const distinct = [...new Set([...strs, ...(states?.get(k) ?? [])])].filter((x) => CODE.test(x)).slice(0, 30);
+        if (distinct.length) { s.enum = distinct; s.example = distinct[0]; }
+        return s;
+      }
       if (strs.every((x) => isoDate.test(x))) { s.format = strs[0]!.includes("T") ? "date-time" : "date"; return s; }
       if (strs.every((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x))) { s.format = "email"; return s; }
       if (strs.every((x) => /^https?:\/\//i.test(x))) { s.format = "uri"; return s; }
-      if (k === "id" || /_id$|id$/i.test(key) || KEEP_STRING_KEYS.has(k)) { s.example = strs[0]!.slice(0, 120); return s; }
+      if (isIdKey(key)) { s.example = synthId(strs[0]!); return s; }
+      if (KEEP_STRING_KEYS.has(k) && CODE.test(strs[0]!)) { s.example = strs[0]; return s; }
       return s;
     }
-    case "integer": case "number": s.type = t; s.example = same[0]; return s;
-    case "boolean": s.type = "boolean"; s.example = same[0]; return s;
+    case "integer": case "number": s.type = t; return s;
+    case "boolean": s.type = "boolean"; return s;
     default: return s;
   }
 }
