@@ -51,18 +51,18 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^1.3.0",
+    "@anthropic-ai/sdk": "^1.6.0",
     "@octokit/rest": "^22.0.1",
-    "@types/node": "^26.6.5",
-    "openai": "^7.45.1",
-    "oxlint": "^1.90.0",
-    "resend": "^6.34.1",
-    "stripe": "^23.0.1",
+    "@types/node": "^26.6.6",
+    "openai": "^7.53.0",
+    "oxlint": "^1.92.0",
+    "resend": "^6.37.0",
+    "stripe": "^23.1.0",
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
-    "twilio": "^6.2.0",
+    "twilio": "^6.3.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
