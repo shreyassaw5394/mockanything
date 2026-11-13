@@ -12,8 +12,8 @@ importers:
         specifier: ^1.32.2
         version: 1.32.2(zod@4.6.7)
       undici:
-        specifier: ^8.12.3
-        version: 8.12.3
+        specifier: ^8.12.4
+        version: 8.12.4
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
@@ -32,7 +32,7 @@ importers:
         version: 26.6.5
       openai:
         specifier: ^7.45.1
-        version: 7.45.1(undici@8.12.3)(zod@4.6.7)
+        version: 7.45.1(undici@8.12.4)(zod@4.6.7)
       oxlint:
         specifier: ^1.90.0
         version: 1.90.0
@@ -1676,8 +1676,8 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@8.12.3:
-    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
+  undici@8.12.4:
+    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
     engines: {node: '>=22.19.0'}
 
   universal-user-agent@7.0.3:
@@ -2799,9 +2799,9 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  openai@7.45.1(undici@8.12.3)(zod@4.6.7):
+  openai@7.45.1(undici@8.12.4)(zod@4.6.7):
     optionalDependencies:
-      undici: 8.12.3
+      undici: 8.12.4
       zod: 4.6.7
 
   oxlint@1.90.0:
@@ -3154,7 +3154,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@8.12.3: {}
+  undici@8.12.4: {}
 
   universal-user-agent@7.0.3: {}
 
